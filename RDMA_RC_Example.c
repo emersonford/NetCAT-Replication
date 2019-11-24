@@ -25,6 +25,10 @@
 #define RDMA_MSG_W "***  RDMA Write operation  ***"
 #define MSG_SIZE (strlen(SEND_MSG) + 1)
 
+#define CLIENT_MSG_SIZE 1
+#define SERVER_COLUMN_COUNT 4096
+#define SERVER_ROW_COUNT 4096
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
 	static inline uint64_t ntohll(uint64_t x) { return bswap_64(x); }
@@ -78,17 +82,52 @@ struct config_t config = {
 };
 
 /**
- * Return the current value of the fine-grain CPU cycle counter
- * (accessed via the RDTSC instruction).
+ * Source: https://github.com/google/highwayhash/blob/master/highwayhash/tsc_timer.h
+ *
+ * Accurately measures the cycle start and cycle end count.
  */
 static __inline __attribute__((always_inline))
 uint64_t
-rdtscp()
+start_tsc()
 {
-    uint32_t lo, hi;
-    __asm__ __volatile__("rdtscp" : "=a" (lo), "=d" (hi));
-    return (((uint64_t)hi << 32) | lo);
+    uint64_t t;
+    __asm__ __volatile__(
+      "lfence\n\t"
+      "rdtsc\n\t"
+      "shl $32, %%rdx\n\t"
+      "or %%rdx, %0\n\t"
+      "lfence"
+      : "=a"(t)
+      :
+      // "memory" avoids reordering. rdx = TSC >> 32.
+      // "cc" = flags modified by SHL.
+      : "rdx", "memory", "cc");
+
+    return t;
 }
+
+static __inline __attribute__((always_inline))
+uint64_t
+stop_tsc()
+{
+    uint64_t t;
+    __asm__ __volatile__(
+      "rdtscp\n\t"
+      "shl $32, %%rdx\n\t"
+      "or %%rdx, %0\n\t"
+      "lfence"
+      : "=a"(t)
+      :
+      // "memory" avoids reordering. rcx = TSC_AUX. rdx = TSC >> 32.
+      // "cc" = flags modified by SHL.
+      : "rcx", "rdx", "memory", "cc");
+
+    return t;
+}
+
+
+
+
 
 
 /******************************************************************************
@@ -415,15 +454,16 @@ static int post_send_poll_complete(struct resources *res, int opcode)
 	}
 
 	/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
-  start_cycle_count = rdtscp();
+  start_cycle_count = start_tsc();
+
 	rc = ibv_post_send(res->qp, &sr, &bad_wr);
 	if (rc)
 		fprintf(stderr, "failed to post SR\n");
-
 	do {
 		poll_result = ibv_poll_cq(res->cq, 1, &wc);
 	} while (poll_result == 0);
-  end_cycle_count = rdtscp();
+
+  end_cycle_count = stop_tsc();
 
 	if (poll_result < 0) {
 		/* poll CQ failed */
@@ -1227,7 +1267,8 @@ int main(int argc, char *argv[])
 		goto main_exit;
 	}
 
-  fprintf(stdout, "Beginning tests...\n----------------------------\n\n");
+  if (config.server_name)
+    fprintf(stdout, "Beginning tests...\n----------------------------\n\n");
 
 	/*  Now the client performs an RDMA read and then write on server.
 	 *  Note that the server has no idea these events have occured */
@@ -1267,9 +1308,6 @@ int main(int argc, char *argv[])
 		rc = 1;
 		goto main_exit;
 	}
-
-	if (!config.server_name)
-		fprintf(stdout, "[Server only] Contents of server buffer: '%s'\n", res.buf);
 
 	rc = 0;
 
