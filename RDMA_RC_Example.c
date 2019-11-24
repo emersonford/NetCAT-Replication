@@ -1300,7 +1300,7 @@ int main(int argc, char *argv[])
         goto main_exit;
       }
 
-      fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res->buf);
+      fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res.buf[0]);
     }
 	}
 
