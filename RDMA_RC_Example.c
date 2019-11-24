@@ -20,10 +20,6 @@
 
 /* poll CQ timeout in millisec (2 seconds) */
 #define MAX_POLL_CQ_TIMEOUT 2000
-#define SEND_MSG   "***  SEND operation        ***"
-#define RDMA_MSG_R "***  RDMA Read operation   ***"
-#define RDMA_MSG_W "***  RDMA Write operation  ***"
-#define MSG_SIZE (strlen(SEND_MSG) + 1)
 
 #define CLIENT_MSG_SIZE 1
 #define SERVER_COLUMN_COUNT 4096
@@ -371,7 +367,7 @@ static int post_send(struct resources *res, int opcode)
 	/* prepare the scatter/gather entry */
 	memset(&sge, 0, sizeof(sge));
 	sge.addr = (uintptr_t)res->buf;
-	sge.length = MSG_SIZE;
+	sge.length = CLIENT_MSG_SIZE;
 	sge.lkey = res->mr->lkey;
 
 	/* prepare the send work request */
@@ -436,7 +432,7 @@ static int post_send_poll_complete(struct resources *res, int opcode)
 	/* prepare the scatter/gather entry */
 	memset(&sge, 0, sizeof(sge));
 	sge.addr = (uintptr_t)res->buf;
-	sge.length = MSG_SIZE;
+	sge.length = CLIENT_MSG_SIZE;
 	sge.lkey = res->mr->lkey;
 
 	/* prepare the send work request */
@@ -515,7 +511,7 @@ static int post_receive(struct resources *res)
 	/* prepare the scatter/gather entry */
 	memset(&sge, 0, sizeof(sge));
 	sge.addr = (uintptr_t)res->buf;
-	sge.length = MSG_SIZE;
+	sge.length = CLIENT_MSG_SIZE;
 	sge.lkey = res->mr->lkey;
 
 	/* prepare the receive work request */
@@ -582,11 +578,12 @@ static int resources_create(struct resources *res)
 	struct ibv_qp_init_attr  qp_init_attr;
 	struct ibv_device	 *ib_dev = NULL;
 	size_t			 size;
-	int		 	 i;
+	int		 	 i, j;
 	int			 mr_flags = 0;
 	int			 cq_size = 0;
 	int			 num_devices;
 	int			 rc = 0;
+  char     curr_num = 0;
 
 
 	if (config.server_name)	{
@@ -685,7 +682,11 @@ static int resources_create(struct resources *res)
 	}
 
 	/* allocate the memory buffer that will hold the data */
-	size = MSG_SIZE;
+  if (!config.server_name)
+    size = SERVER_COLUMN_COUNT * SERVER_ROW_COUNT;
+  else
+    size = CLIENT_MSG_SIZE;
+
 	res->buf = (char *) malloc(size);
 
 	if (!res->buf) {
@@ -694,14 +695,16 @@ static int resources_create(struct resources *res)
 		goto resources_create_exit;
 	}
 
-	memset(res->buf, 0 , size);
-
-	/* only in the server side put the message in the memory buffer */
-	if (!config.server_name) {
-		strcpy(res->buf, SEND_MSG);
-		fprintf(stdout, "[Server only] going to send the message: '%s'\n", res->buf);
-	} else
-		memset(res->buf, 0, size);
+  if (!config.server_name) {
+    for (i = 0; i < SERVER_ROW_COUNT; i++) {
+      for (j = 0; j < SERVER_COLUMN_COUNT; i++) {
+        res->buf[i * SERVER_COLUMN_COUNT + j] = curr_num;
+        curr_num++;
+      }
+    }
+  }
+  else
+    memset(res->buf, 0 , size);
 
 	/* register the memory buffer */
 	mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE;
@@ -1254,11 +1257,7 @@ int main(int argc, char *argv[])
 
 	/* after polling the completion we have the message in the client buffer too */
 	if (config.server_name)
-		fprintf(stdout, "[Client only] Message is: '%s'\n", res.buf);
-	else {
-		/* setup server buffer with read message */
-		strcpy(res.buf, RDMA_MSG_R);
-	}
+		fprintf(stdout, "[Client only] Message is: '%hhu'\n", res->buf);
 
 	/* Sync so we are sure server side has data ready before client tries to read it */
 	if (sock_sync_data(res.sock, 1, "R", &temp_char)) {  /* just send a dummy char back and forth */
@@ -1274,32 +1273,34 @@ int main(int argc, char *argv[])
 	 *  Note that the server has no idea these events have occured */
 
 	if (config.server_name) {
-		/* First we read contens of server's buffer */
-		if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
-			fprintf(stderr, "failed to post SR 2\n");
-			rc = 1;
-			goto main_exit;
-		}
+    for(i = 0; i < 2; i++) {
+      /* First we read contents of server's buffer */
+      if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
+        fprintf(stderr, "failed to post SR 2\n");
+        rc = 1;
+        goto main_exit;
+      }
 
-		fprintf(stdout, "[Client only] Contents of server's buffer: '%s'\n", res.buf);
+      fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res->buf);
 
-		/* Now we replace what's in the server's buffer */
-		strcpy(res.buf, RDMA_MSG_W);
-		fprintf(stdout, "[Client only] Now replacing it with: '%s'\n", res.buf);
-		if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE)) {
-			fprintf(stderr, "failed to post SR 3\n");
-			rc = 1;
-			goto main_exit;
-		}
+      /* Now we replace what's in the server's buffer */
+      strcpy(res->buf, 1);
+      fprintf(stdout, "[Client only] Now replacing it with: '%hhu'\n", res->buf);
+      if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE)) {
+        fprintf(stderr, "failed to post SR 3\n");
+        rc = 1;
+        goto main_exit;
+      }
 
-		/* Then we read contens of server's buffer again */
-		if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
-			fprintf(stderr, "failed to post SR 2\n");
-			rc = 1;
-			goto main_exit;
-		}
+      /* Then we read contents of server's buffer again */
+      if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
+        fprintf(stderr, "failed to post SR 2\n");
+        rc = 1;
+        goto main_exit;
+      }
 
-		fprintf(stdout, "[Client only] Contents of server's buffer: '%s'\n", res.buf);
+      fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res->buf);
+    }
 	}
 
 	/* Sync so server will know that client is done mucking with its memory */
