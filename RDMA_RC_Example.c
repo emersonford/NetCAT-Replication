@@ -697,7 +697,7 @@ static int resources_create(struct resources *res)
 
   if (!config.server_name) {
     for (i = 0; i < SERVER_ROW_COUNT; i++) {
-      for (j = 0; j < SERVER_COLUMN_COUNT; i++) {
+      for (j = 0; j < SERVER_COLUMN_COUNT; j++) {
         res->buf[i * SERVER_COLUMN_COUNT + j] = curr_num;
         curr_num++;
       }
