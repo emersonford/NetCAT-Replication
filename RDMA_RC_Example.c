@@ -412,7 +412,7 @@ static int post_send(struct resources *res, int opcode)
 
 
 /* Time the difference between an post_send and a poll_cq */
-static int post_send_poll_complete(struct resources *res, int opcode)
+static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* cycle_count)
 {
   // From post_send
 	struct ibv_send_wr	sr;
@@ -472,7 +472,8 @@ static int post_send_poll_complete(struct resources *res, int opcode)
 	} else {
 		/* CQE found */
 		// fprintf(stdout, "completion was found in CQ with status 0x%x\n", wc.status);
-    fprintf(stdout, "operation cycle time: %lu\n", end_cycle_count - start_cycle_count);
+    // fprintf(stdout, "operation cycle time: %lu\n", end_cycle_count - start_cycle_count);
+    *cycle_count = end_cycle_count - start_cycle_count;
 
 		/* check the completion status (here we don't care about the completion opcode */
 		if (wc.status != IBV_WC_SUCCESS) {
@@ -1169,6 +1170,7 @@ int main(int argc, char *argv[])
 	int			rc = 1;
 	char		temp_char;
   int     i;
+  uint64_t cycle_count;
 
 	/* parse the command line parameters */
 	while (1) {
@@ -1276,31 +1278,32 @@ int main(int argc, char *argv[])
 	if (config.server_name) {
     for(i = 0; i < SERVER_COLUMN_COUNT; i++) {
       /* First we read contents of server's buffer */
-      if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
+      if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &cycle_count)) {
         fprintf(stderr, "failed to post SR 2\n");
         rc = 1;
         goto main_exit;
       }
 
-      fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res.buf[0]);
+      fprintf(stdout, "[READ] Contents of server's buffer: '%hhu', it took %lu cycles\n", res.buf[0], cycle_count);
 
       /* Now we replace what's in the server's buffer */
       res.buf[0] = (i + 1) % 256;
-      fprintf(stdout, "[Client only] Now replacing it with: '%hhu'\n", res.buf[0]);
-      if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE)) {
+      fprintf(stdout, "[WRITE] Now replacing it with: '%hhu'\n", res.buf[0]);
+      if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
         fprintf(stderr, "failed to post SR 3\n");
         rc = 1;
         goto main_exit;
       }
+      fprintf(stdout, "[WRITE] That took %lu cycles\n", cycle_count);
 
       /* Then we read contents of server's buffer again */
-      if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
+      if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &cycle_count)) {
         fprintf(stderr, "failed to post SR 2\n");
         rc = 1;
         goto main_exit;
       }
 
-      fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res.buf[0]);
+      fprintf(stdout, "[READ] Contents of server's buffer: '%hhu', it took %lu cycles\n", res.buf[0], cycle_count);
     }
 	}
 
