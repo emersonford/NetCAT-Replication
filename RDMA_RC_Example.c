@@ -436,7 +436,7 @@ static int post_send_poll_complete(struct resources *res, int opcode)
 	} else {
 		/* CQE found */
 		// fprintf(stdout, "completion was found in CQ with status 0x%x\n", wc.status);
-    fprintf(stdout, "operation cycle time: %llu\n", end_cycle_count - start_cycle_count);
+    fprintf(stdout, "operation cycle time: %lu\n", end_cycle_count - start_cycle_count);
 
 		/* check the completion status (here we don't care about the completion opcode */
 		if (wc.status != IBV_WC_SUCCESS) {
