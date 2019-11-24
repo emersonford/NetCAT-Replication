@@ -279,7 +279,7 @@ static int poll_completion(struct resources *res)
 		rc = 1;
 	} else {
 		/* CQE found */
-		fprintf(stdout, "completion was found in CQ with status 0x%x\n", wc.status);
+		// fprintf(stdout, "completion was found in CQ with status 0x%x\n", wc.status);
 		/* check the completion status (here we don't care about the completion opcode */
 		if (wc.status != IBV_WC_SUCCESS) {
 			fprintf(stderr, "got bad completion with status: 0x%x, vendor syndrome: 0x%x\n", wc.status, wc.vendor_err);
@@ -343,13 +343,16 @@ static int post_send(struct resources *res, int opcode)
 	else {
 		switch(opcode)	{
 		case IBV_WR_SEND:
-			fprintf(stdout, "Send Request was posted\n"); break;
+			// fprintf(stdout, "Send Request was posted\n");
+      break;
 
 		case IBV_WR_RDMA_READ:
-			fprintf(stdout, "RDMA Read Request was posted\n"); break;
+			// fprintf(stdout, "RDMA Read Request was posted\n");
+      break;
 
 		case IBV_WR_RDMA_WRITE:
-			fprintf(stdout, "RDMA Write Request was posted\n"); break;
+			// fprintf(stdout, "RDMA Write Request was posted\n");
+      break;
 
 		default:
 			fprintf(stdout, "Unknown Request was posted\n"); break;
@@ -1137,6 +1140,8 @@ int main(int argc, char *argv[])
 		rc = 1;
 		goto main_exit;
 	}
+
+  fprintf(stdout, "Beginning tests...\n\n\n");
 
 	/*  Now the client performs an RDMA read and then write on server.
 	 *  Note that the server has no idea these events have occured */
