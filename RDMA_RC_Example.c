@@ -1167,7 +1167,8 @@ int main(int argc, char *argv[])
 {
 	struct resources	res;
 	int			rc = 1;
-	char			temp_char;
+	char		temp_char;
+  int     i;
 
 	/* parse the command line parameters */
 	while (1) {
@@ -1257,7 +1258,7 @@ int main(int argc, char *argv[])
 
 	/* after polling the completion we have the message in the client buffer too */
 	if (config.server_name)
-		fprintf(stdout, "[Client only] Message is: '%hhu'\n", res->buf);
+		fprintf(stdout, "[Client only] Message is: '%hhu'\n", res.buf[0]);
 
 	/* Sync so we are sure server side has data ready before client tries to read it */
 	if (sock_sync_data(res.sock, 1, "R", &temp_char)) {  /* just send a dummy char back and forth */
@@ -1281,11 +1282,11 @@ int main(int argc, char *argv[])
         goto main_exit;
       }
 
-      fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res->buf);
+      fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res.buf[0]);
 
       /* Now we replace what's in the server's buffer */
-      strcpy(res->buf, 1);
-      fprintf(stdout, "[Client only] Now replacing it with: '%hhu'\n", res->buf);
+      res.buf[0] = 1;
+      fprintf(stdout, "[Client only] Now replacing it with: '%hhu'\n", res.buf[0]);
       if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE)) {
         fprintf(stderr, "failed to post SR 3\n");
         rc = 1;
