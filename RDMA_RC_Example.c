@@ -77,6 +77,19 @@ struct config_t config = {
 	-1	/* gid_idx */
 };
 
+/**
+ * Return the current value of the fine-grain CPU cycle counter
+ * (accessed via the RDTSC instruction).
+ */
+static __inline __attribute__((always_inline))
+uint64_t
+rdtscp()
+{
+    uint32_t lo, hi;
+    __asm__ __volatile__("rdtscp" : "=a" (lo), "=d" (hi));
+    return (((uint64_t)hi << 32) | lo);
+}
+
 
 /******************************************************************************
  * Socket operations
@@ -356,6 +369,79 @@ static int post_send(struct resources *res, int opcode)
 
 		default:
 			fprintf(stdout, "Unknown Request was posted\n"); break;
+		}
+	}
+
+	return rc;
+}
+
+
+/* Time the difference between an post_send and a poll_cq */
+static int post_send_poll_complete(struct resources *res, int opcode)
+{
+  // From post_send
+	struct ibv_send_wr	sr;
+	struct ibv_sge		sge;
+	struct ibv_send_wr	*bad_wr = NULL;
+	int			rc;
+
+  // From poll_complete
+	struct ibv_wc	wc;
+	int		poll_result;
+
+  // Timing variables
+  uint64_t start_cycle_count;
+  uint64_t end_cycle_count;
+
+
+	/* prepare the scatter/gather entry */
+	memset(&sge, 0, sizeof(sge));
+	sge.addr = (uintptr_t)res->buf;
+	sge.length = MSG_SIZE;
+	sge.lkey = res->mr->lkey;
+
+	/* prepare the send work request */
+	memset(&sr, 0, sizeof(sr));
+	sr.next = NULL;
+	sr.wr_id = 0;
+	sr.sg_list = &sge;
+	sr.num_sge = 1;
+	sr.opcode = opcode;
+	sr.send_flags = IBV_SEND_SIGNALED;
+
+	if(opcode != IBV_WR_SEND) {
+		sr.wr.rdma.remote_addr = res->remote_props.addr;
+		sr.wr.rdma.rkey = res->remote_props.rkey;
+	}
+
+	/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
+  start_cycle_count = rdtscp();
+	rc = ibv_post_send(res->qp, &sr, &bad_wr);
+	if (rc)
+		fprintf(stderr, "failed to post SR\n");
+
+	do {
+		poll_result = ibv_poll_cq(res->cq, 1, &wc);
+	} while (poll_result == 0);
+  end_cycle_count = rdtscp();
+
+	if (poll_result < 0) {
+		/* poll CQ failed */
+		fprintf(stderr, "poll CQ failed retval = %d, errno: %s\n", poll_result, strerror(errno));
+		rc = 1;
+	} else if (poll_result == 0) {
+		/* the CQ is empty */
+		fprintf(stderr, "completion wasn't found in the CQ after timeout. errno: %s\n", strerror(errno));
+		rc = 1;
+	} else {
+		/* CQE found */
+		// fprintf(stdout, "completion was found in CQ with status 0x%x\n", wc.status);
+    fprintf(stdout, "operation cycle time: %llu\n", end_cycle_count - start_cycle_count);
+
+		/* check the completion status (here we don't care about the completion opcode */
+		if (wc.status != IBV_WC_SUCCESS) {
+			fprintf(stderr, "got bad completion with status: 0x%x, vendor syndrome: 0x%x\n", wc.status, wc.vendor_err);
+			rc = 1;
 		}
 	}
 
@@ -1141,23 +1227,17 @@ int main(int argc, char *argv[])
 		goto main_exit;
 	}
 
-  fprintf(stdout, "Beginning tests...\n\n\n");
+  fprintf(stdout, "Beginning tests...\n----------------------------\n\n");
 
 	/*  Now the client performs an RDMA read and then write on server.
 	 *  Note that the server has no idea these events have occured */
 
 	if (config.server_name) {
 		/* First we read contens of server's buffer */
-		if (post_send(&res, IBV_WR_RDMA_READ)) {
+		if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
 			fprintf(stderr, "failed to post SR 2\n");
 			rc = 1;
 			goto main_exit;
-		}
-
-		if (poll_completion(&res)) {
-			fprintf(stderr, "poll completion failed 2\n");
-			rc = 1;
- 			goto main_exit;
 		}
 
 		fprintf(stdout, "[Client only] Contents of server's buffer: '%s'\n", res.buf);
@@ -1165,29 +1245,17 @@ int main(int argc, char *argv[])
 		/* Now we replace what's in the server's buffer */
 		strcpy(res.buf, RDMA_MSG_W);
 		fprintf(stdout, "[Client only] Now replacing it with: '%s'\n", res.buf);
-		if (post_send(&res, IBV_WR_RDMA_WRITE)) {
+		if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE)) {
 			fprintf(stderr, "failed to post SR 3\n");
 			rc = 1;
 			goto main_exit;
 		}
 
-		if (poll_completion(&res)) {
-			fprintf(stderr, "poll completion failed 3\n");
-			rc = 1;
-			goto main_exit;
-		}
-
 		/* Then we read contens of server's buffer again */
-		if (post_send(&res, IBV_WR_RDMA_READ)) {
+		if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
 			fprintf(stderr, "failed to post SR 2\n");
 			rc = 1;
 			goto main_exit;
-		}
-
-		if (poll_completion(&res)) {
-			fprintf(stderr, "poll completion failed 2\n");
-			rc = 1;
- 			goto main_exit;
 		}
 
 		fprintf(stdout, "[Client only] Contents of server's buffer: '%s'\n", res.buf);
