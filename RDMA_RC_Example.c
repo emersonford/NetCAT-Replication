@@ -1184,6 +1184,8 @@ int main(int argc, char *argv[])
 			rc = 1;
  			goto main_exit;
 		}
+
+		fprintf(stdout, "[Client only] Contents of server's buffer: '%s'\n", res.buf);
 	}
 
 	/* Sync so server will know that client is done mucking with its memory */
