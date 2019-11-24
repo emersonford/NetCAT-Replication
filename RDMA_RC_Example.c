@@ -216,7 +216,7 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 	while(!rc && total_read_bytes < xfer_size) {
 		read_bytes = read(sock, remote_data, xfer_size);
 		if(read_bytes > 0)
-			total_read_bytes += read_bytes; 
+			total_read_bytes += read_bytes;
 		else
 			rc = read_bytes;
 	}
@@ -225,7 +225,7 @@ int sock_sync_data(int sock, int xfer_size, char *local_data, char *remote_data)
 }
 
 
-/****************************************************************************** 
+/******************************************************************************
  * End of socket operations
  * ******************************************************************************/
 
@@ -422,10 +422,10 @@ static int post_receive(struct resources *res)
  *  *
  *  *	Description
  *  *	res is initialized to default values
- *  ******************************************************************************/ 
+ *  ******************************************************************************/
 static void resources_init(struct resources *res)
 {
-	memset(res, 0, sizeof *res); 
+	memset(res, 0, sizeof *res);
 	res->sock = -1;
 }
 
@@ -492,7 +492,7 @@ static int resources_create(struct resources *res)
 
 	/* if there isn't any IB device in host */
 	if (!num_devices) {
-		fprintf(stderr, "found %d device(s)\n", num_devices); 
+		fprintf(stderr, "found %d device(s)\n", num_devices);
 		rc = 1;
 		goto resources_create_exit;
 	}
@@ -554,7 +554,7 @@ static int resources_create(struct resources *res)
 		rc = 1;
 		goto resources_create_exit;
 	}
- 
+
 	/* allocate the memory buffer that will hold the data */
 	size = MSG_SIZE;
 	res->buf = (char *) malloc(size);
@@ -644,7 +644,7 @@ resources_create_exit:
 			ibv_free_device_list(dev_list);
 			dev_list = NULL;
 		}
- 
+
 		if (res->sock >= 0) {
 			if (close(res->sock))
 				fprintf(stderr, "failed to close socket\n");
@@ -676,7 +676,7 @@ static int modify_qp_to_init(struct ibv_qp *qp)
 	struct ibv_qp_attr	attr;
 	int			flags;
 	int			rc;
-	
+
 	memset(&attr, 0, sizeof(attr));
 
 	attr.qp_state = IBV_QPS_INIT;
@@ -970,7 +970,7 @@ static int resources_destroy(struct resources *res)
  * *
  * *	Description
  * *	Print out config information
- *  ******************************************************************************/ 
+ *  ******************************************************************************/
 static void print_config(void)
 {
 	fprintf(stdout,	" ------------------------------------------------\n");
@@ -1171,6 +1171,19 @@ int main(int argc, char *argv[])
 			rc = 1;
 			goto main_exit;
 		}
+
+		/* Then we read contens of server's buffer again */
+		if (post_send(&res, IBV_WR_RDMA_READ)) {
+			fprintf(stderr, "failed to post SR 2\n");
+			rc = 1;
+			goto main_exit;
+		}
+
+		if (poll_completion(&res)) {
+			fprintf(stderr, "poll completion failed 2\n");
+			rc = 1;
+ 			goto main_exit;
+		}
 	}
 
 	/* Sync so server will know that client is done mucking with its memory */
@@ -1182,7 +1195,7 @@ int main(int argc, char *argv[])
 
 	if (!config.server_name)
 		fprintf(stdout, "[Server only] Contents of server buffer: '%s'\n", res.buf);
-	
+
 	rc = 0;
 
 main_exit:
