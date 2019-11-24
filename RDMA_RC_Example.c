@@ -1274,7 +1274,7 @@ int main(int argc, char *argv[])
 	 *  Note that the server has no idea these events have occured */
 
 	if (config.server_name) {
-    for(i = 0; i < 2; i++) {
+    for(i = 0; i < SERVER_COLUMN_COUNT; i++) {
       /* First we read contents of server's buffer */
       if (post_send_poll_complete(&res, IBV_WR_RDMA_READ)) {
         fprintf(stderr, "failed to post SR 2\n");
@@ -1285,7 +1285,7 @@ int main(int argc, char *argv[])
       fprintf(stdout, "[Client only] Contents of server's buffer: '%hhu'\n", res.buf[0]);
 
       /* Now we replace what's in the server's buffer */
-      res.buf[0] = 1;
+      res.buf[0] = (i + 1) % 256;
       fprintf(stdout, "[Client only] Now replacing it with: '%hhu'\n", res.buf[0]);
       if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE)) {
         fprintf(stderr, "failed to post SR 3\n");
