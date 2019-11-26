@@ -1189,8 +1189,8 @@ int main(int argc, char *argv[])
 	struct resources	res;
 	int			rc = 1;
 	char		temp_char;
-	int     i;
-	uint64_t cycle_count;
+	int     i, j;
+	uint64_t cycle_count, orig_addr;
 
 	/* parse the command line parameters */
 	while (1) {
@@ -1309,40 +1309,43 @@ int main(int argc, char *argv[])
 	//nanosleep(&sleeptime, NULL);
 
 	if (config.server_name) {
+		orig_addr = res.remote_props.addr;
 		for(i = 0; i < SERVER_COLUMN_COUNT; i++) {
-			uint64_t t1;
-			//uint64_t t2;
-			uint64_t t3;
-			/* First we read contents of server's buffer */
-			if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t1)) {
-				fprintf(stderr, "failed to post SR 2\n");
-				rc = 1;
-				goto main_exit;
+			for(j = 0; j < SERVER_ROW_COUNT; j++) {
+				uint64_t t1;
+				//uint64_t t2;
+				uint64_t t3;
+				/* First we read contents of server's buffer */
+				if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t1)) {
+					fprintf(stderr, "failed to post SR 2\n");
+					rc = 1;
+					goto main_exit;
+				}
+
+				fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
+
+				/* Now we replace what's in the server's buffer */
+				res.buf[0] = (i + 2) % 256;
+				fprintf(stdout, "[WRITE] [%04d] Now replacing it with: '%hhu',", i,res.buf[0]);
+				if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
+					fprintf(stderr, "failed to post SR 3\n");
+					rc = 1;
+					goto main_exit;
+				}
+				fprintf(stdout, "it took %lu cycles\n", cycle_count);
+
+				/* Then we read contents of server's buffer again */
+				if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t3)) {
+					fprintf(stderr, "failed to post SR 2\n");
+					rc = 1;
+					goto main_exit;
+				}
+				int64_t del = t1-t3;
+
+				fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
+				fprintf(stdout, "[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, del, del * cycles_to_nsec);
+				res.remote_props.addr++;
 			}
-
-			fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
-
-			/* Now we replace what's in the server's buffer */
-			res.buf[0] = (i + 2) % 256;
-			fprintf(stdout, "[WRITE] [%04d] Now replacing it with: '%hhu',", i,res.buf[0]);
-			if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
-				fprintf(stderr, "failed to post SR 3\n");
-				rc = 1;
-				goto main_exit;
-			}
-			fprintf(stdout, "it took %lu cycles\n", cycle_count);
-
-			/* Then we read contents of server's buffer again */
-			if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t3)) {
-				fprintf(stderr, "failed to post SR 2\n");
-				rc = 1;
-				goto main_exit;
-			}
-			int64_t del = t1-t3;
-
-			fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
-			fprintf(stdout, "[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, del, del * cycles_to_nsec);
-			res.remote_props.addr++;
 		}
 	}
 
