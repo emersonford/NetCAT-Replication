@@ -24,6 +24,11 @@
 #include <errno.h>
 
 #define DEBUG 1
+#define debug_print(fmt, ...) \
+    do { if (DEBUG) fprintf(stdout, fmt, __VA_ARGS__); } while (0)
+
+#define nodebug_print(fmt, ...) \
+    do { if (!DEBUG) fprintf(stdout, fmt, __VA_ARGS__); } while (0)
 
 /* poll CQ timeout in millisec (2 seconds) */
 #define MAX_POLL_CQ_TIMEOUT 2000
@@ -142,7 +147,7 @@ stop_tsc()
 void pin_all_memory() {
     int r = mlockall(MCL_CURRENT | MCL_FUTURE);
     if (r != 0) {
-      fprintf(stderr, "Could not lock all memory pages (%s)!", strerror(errno));
+      fprintf(stderr, "Could not lock all memory pages (%s)\n", strerror(errno));
     }
 }
 
@@ -348,7 +353,8 @@ static int poll_completion(struct resources *res)
 		rc = 1;
 	} else {
 		/* CQE found */
-		// fprintf(stdout, "completion was found in CQ with status 0x%x\n", wc.status);
+		debug_print("completion was found in CQ with status 0x%x\n", wc.status);
+
 		/* check the completion status (here we don't care about the completion opcode */
 		if (wc.status != IBV_WC_SUCCESS) {
 			fprintf(stderr, "got bad completion with status: 0x%x, vendor syndrome: 0x%x\n", wc.status, wc.vendor_err);
@@ -409,24 +415,6 @@ static int post_send(struct resources *res, int opcode)
 	rc = ibv_post_send(res->qp, &sr, &bad_wr);
 	if (rc)
 		fprintf(stderr, "failed to post SR\n");
-	else {
-		switch(opcode)	{
-		case IBV_WR_SEND:
-			// fprintf(stdout, "Send Request was posted\n");
-			break;
-
-		case IBV_WR_RDMA_READ:
-			// fprintf(stdout, "RDMA Read Request was posted\n");
-			break;
-
-		case IBV_WR_RDMA_WRITE:
-			// fprintf(stdout, "RDMA Write Request was posted\n");
-			break;
-
-		default:
-			fprintf(stdout, "Unknown Request was posted\n"); break;
-		}
-	}
 
 	return rc;
 }
@@ -492,8 +480,6 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 		rc = 1;
 	} else {
 		/* CQE found */
-		// fprintf(stdout, "completion was found in CQ with status 0x%x\n", wc.status);
-		// fprintf(stdout, "operation cycle time: %lu\n", end_cycle_count - start_cycle_count);
 		*cycle_count = end_cycle_count - start_cycle_count;
 
 		/* check the completion status (here we don't care about the completion opcode */
@@ -548,7 +534,7 @@ static int post_receive(struct resources *res)
 	if (rc)
 		fprintf(stderr, "failed to post RR\n");
 	else
-		fprintf(stdout, "Receive Request was posted\n");
+		debug_print("Receive Request was posted\n");
 
 	return rc;
 }
@@ -618,7 +604,7 @@ static int resources_create(struct resources *res)
 		}
 	} else {
 		/* server side */
-		fprintf(stdout, "[Server only] waiting on port %d for TCP connection\n", config.tcp_port);
+		debug_print("[Server only] waiting on port %d for TCP connection\n", config.tcp_port);
 		res->sock = sock_connect(NULL, config.tcp_port);
 		if (res->sock < 0) {
 			fprintf(stderr, "[Server only] failed to establish TCP connection with client on port %d\n", config.tcp_port);
@@ -627,8 +613,8 @@ static int resources_create(struct resources *res)
 		}
 	}
 
-	fprintf(stdout, "TCP connection was established\n");
-	fprintf(stdout, "searching for IB devices in host\n");
+	debug_print("TCP connection was established\n");
+	debug_print("searching for IB devices in host\n");
 
 	/* get device names in the system */
 	dev_list = ibv_get_device_list(&num_devices);
@@ -645,13 +631,13 @@ static int resources_create(struct resources *res)
 		goto resources_create_exit;
 	}
 
-	fprintf(stdout, "found %d device(s)\n", num_devices);
+	debug_print("found %d device(s)\n", num_devices);
 
 	/* search for the specific device we want to work with */
 	for (i = 0; i < num_devices; i ++) {
 		if (!config.dev_name) {
 			config.dev_name = strdup(ibv_get_device_name(dev_list[i]));
-			fprintf(stdout, "device not specified, using first one found: %s\n", config.dev_name);
+			debug_print("device not specified, using first one found: %s\n", config.dev_name);
 		}
 		if (!strcmp(ibv_get_device_name(dev_list[i]), config.dev_name)) {
 			ib_dev = dev_list[i];
@@ -738,7 +724,7 @@ static int resources_create(struct resources *res)
 		goto resources_create_exit;
 	}
 
-	fprintf(stdout, "MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n", res->buf, res->mr->lkey, res->mr->rkey, mr_flags);
+	debug_print("MR was registered with addr=%p, lkey=0x%x, rkey=0x%x, flags=0x%x\n", res->buf, res->mr->lkey, res->mr->rkey, mr_flags);
 
 	/* create the Queue Pair */
 	memset(&qp_init_attr, 0, sizeof(qp_init_attr));
@@ -759,7 +745,7 @@ static int resources_create(struct resources *res)
 		goto resources_create_exit;
 	}
 
-	fprintf(stdout, "QP was created, QP number=0x%x\n", res->qp->qp_num);
+	debug_print("QP was created, QP number=0x%x\n", res->qp->qp_num);
 
 resources_create_exit:
 	if (rc) {
@@ -990,7 +976,7 @@ static int connect_qp(struct resources *res)
 	local_con_data.lid = htons(res->port_attr.lid);
 	memcpy(local_con_data.gid, &my_gid, sizeof(my_gid));
 
-	fprintf(stdout, "\nLocal LID	= 0x%x\n", res->port_attr.lid);
+	debug_print("\nLocal LID	= 0x%x\n", res->port_attr.lid);
 	if (sock_sync_data(res->sock, sizeof(struct cm_con_data_t), (char *) &local_con_data, (char *) &tmp_con_data) < 0) {
 		fprintf(stderr, "failed to exchange connection data between sides\n");
 		return 1;
@@ -1005,14 +991,14 @@ static int connect_qp(struct resources *res)
 	/* save the remote side attributes, we will need it for the post SR */
 	res->remote_props = remote_con_data;
 
-	fprintf(stdout, "Remote address = 0x%"PRIx64"\n", remote_con_data.addr);
-	fprintf(stdout, "Remote rkey = 0x%x\n", remote_con_data.rkey);
-	fprintf(stdout, "Remote QP number = 0x%x\n", remote_con_data.qp_num);
-	fprintf(stdout, "Remote LID = 0x%x\n", remote_con_data.lid);
+	debug_print("Remote address = 0x%"PRIx64"\n", remote_con_data.addr);
+	debug_print("Remote rkey = 0x%x\n", remote_con_data.rkey);
+	debug_print("Remote QP number = 0x%x\n", remote_con_data.qp_num);
+	debug_print("Remote LID = 0x%x\n", remote_con_data.lid);
 	if (config.gid_idx >= 0) {
 		const uint8_t *p = remote_con_data.gid;
 
-		fprintf(stdout, "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+		debug_print("Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
 				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 	}
 
@@ -1046,7 +1032,7 @@ static int connect_qp(struct resources *res)
 		return rc;
 	}
 
-	fprintf(stdout, "QP state was change to RTS\n");
+	debug_print("QP state was change to RTS\n");
 
 	/* sync to make sure that both sides are in states that they can connect to prevent packet loose */
 	if (sock_sync_data(res->sock, 1, "Q", &temp_char)) { /* just send a dummy char back and forth */
@@ -1132,10 +1118,10 @@ static void print_config(void)
 	fprintf(stdout,	" Device name	: \"%s\"\n", config.dev_name);
 	fprintf(stdout,	" IB port	: %u\n", config.ib_port);
 	if (config.server_name)
-		fprintf(stdout, "[client only] IP	: %s\n", config.server_name);
+		debug_print("[client only] IP	: %s\n", config.server_name);
 	fprintf(stdout,	" TCP port	: %u\n", config.tcp_port);
 	if (config.gid_idx >= 0)
-		fprintf(stdout, " GID index	: %u\n", config.gid_idx);
+		debug_print(" GID index	: %u\n", config.gid_idx);
 	fprintf(stdout,	" ------------------------------------------------\n\n");
 }
 
@@ -1291,7 +1277,7 @@ int main(int argc, char *argv[])
 
 	/* after polling the completion we have the message in the client buffer too */
 	if (config.server_name)
-		fprintf(stdout, "[Client only] Message is: '%hhu'\n", res.buf[0]);
+		debug_print("[Client only] Message is: '%hhu'\n", res.buf[0]);
 
 	/* Sync so we are sure server side has data ready before client tries to read it */
 	if (sock_sync_data(res.sock, 1, "R", &temp_char)) {  /* just send a dummy char back and forth */
@@ -1301,7 +1287,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (config.server_name)
-		fprintf(stdout, "Beginning tests...\n----------------------------\n\n");
+		debug_print("Beginning tests...\n----------------------------\n\n");
 
 	/*  Now the client performs an RDMA read and then write on server.
 	 *  Note that the server has no idea these events have occured */
@@ -1325,17 +1311,17 @@ int main(int argc, char *argv[])
 					goto main_exit;
 				}
 
-				fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
+				debug_print("[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
 
 				/* Now we replace what's in the server's buffer */
 				res.buf[0] = (i + 2) % 256;
-				fprintf(stdout, "[WRITE] [%04d] Now replacing it with: '%hhu',", i,res.buf[0]);
+				debug_print("[WRITE] [%04d] Now replacing it with: '%hhu',", i,res.buf[0]);
 				if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
 					fprintf(stderr, "failed to post SR 3\n");
 					rc = 1;
 					goto main_exit;
 				}
-				fprintf(stdout, "it took %lu cycles\n", cycle_count);
+				debug_print("it took %lu cycles\n", cycle_count);
 
 				/* Then we read contents of server's buffer again */
 				if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t3)) {
@@ -1345,8 +1331,8 @@ int main(int argc, char *argv[])
 				}
 				delta = t1 - t3;
 
-				fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
-				fprintf(stdout, "[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta * cycles_to_nsec);
+				debug_print("[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
+				debug_print("[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta * cycles_to_nsec);
 			}
 		}
 	}
@@ -1369,7 +1355,7 @@ main_exit:
 	if(config.dev_name)
 		free((char *) config.dev_name);
 
-	fprintf(stdout, "\ntest result is %d\n", rc);
+	debug_print("\ntest result is %d\n", rc);
 
 	return rc;
 }
