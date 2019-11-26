@@ -1320,6 +1320,7 @@ int main(int argc, char *argv[])
             }
 
             fprintf(stdout, "[READ] Contents of server's buffer: '%hhu', it took %lu cycles\n", res.buf[0], cycle_count);
+            res.remote_props.addr++;
         }
     }
 
