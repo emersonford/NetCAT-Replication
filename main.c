@@ -23,6 +23,8 @@
 
 #include <errno.h>
 
+#define DEBUG 1
+
 /* poll CQ timeout in millisec (2 seconds) */
 #define MAX_POLL_CQ_TIMEOUT 2000
 
