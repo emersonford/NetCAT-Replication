@@ -1192,7 +1192,8 @@ int main(int argc, char *argv[])
 	int			rc = 1;
 	char		temp_char;
 	int     i, j;
-	uint64_t cycle_count, orig_addr;
+	uint64_t cycle_count, orig_addr, t1, t3;
+    int64_t delta;
 
 	/* parse the command line parameters */
 	while (1) {
@@ -1342,11 +1343,10 @@ int main(int argc, char *argv[])
 					rc = 1;
 					goto main_exit;
 				}
-				int64_t del = t1-t3;
+				delta = t1 - t3;
 
 				fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
-				fprintf(stdout, "[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, del, del * cycles_to_nsec);
-				res.remote_props.addr = orig_addr + j * SERVER_COLUMN_COUNT + i;
+				fprintf(stdout, "[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta * cycles_to_nsec);
 			}
 		}
 	}
