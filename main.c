@@ -1300,8 +1300,8 @@ int main(int argc, char *argv[])
 	if (config.server_name)
 		fprintf(stdout, "Beginning tests...\n----------------------------\n\n");
 
-  /*  Now the client performs an RDMA read and then write on server.
-   *  Note that the server has no idea these events have occured */
+	/*  Now the client performs an RDMA read and then write on server.
+	 *  Note that the server has no idea these events have occured */
 
 	double cycles_to_nsec = get_cpu_mhz(false) / 1000; // cpu_ghz
 
@@ -1323,7 +1323,7 @@ int main(int argc, char *argv[])
 			fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
 
 			/* Now we replace what's in the server's buffer */
-			res.buf[0] = (i + 1) % 256;
+			res.buf[0] = (i + 2) % 256;
 			fprintf(stdout, "[WRITE] [%04d] Now replacing it with: '%hhu',", i,res.buf[0]);
 			if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
 				fprintf(stderr, "failed to post SR 3\n");
