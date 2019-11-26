@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include <endian.h>
 #include <byteswap.h>
@@ -13,6 +14,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+
+#include "get_clock.h"
 
 #include <infiniband/verbs.h>
 
@@ -83,42 +86,42 @@ struct config_t config = {
  * Accurately measures the cycle start and cycle end count.
  */
 static __inline __attribute__((always_inline))
-uint64_t
+	uint64_t
 start_tsc()
 {
-    uint64_t t;
-    __asm__ __volatile__(
-      "lfence\n\t"
-      "rdtsc\n\t"
-      "shl $32, %%rdx\n\t"
-      "or %%rdx, %0\n\t"
-      "lfence"
-      : "=a"(t)
-      :
-      // "memory" avoids reordering. rdx = TSC >> 32.
-      // "cc" = flags modified by SHL.
-      : "rdx", "memory", "cc");
+	uint64_t t;
+	__asm__ __volatile__(
+		"lfence\n\t"
+		"rdtsc\n\t"
+		"shl $32, %%rdx\n\t"
+		"or %%rdx, %0\n\t"
+		"lfence"
+		: "=a"(t)
+		:
+		// "memory" avoids reordering. rdx = TSC >> 32.
+		// "cc" = flags modified by SHL.
+		: "rdx", "memory", "cc");
 
-    return t;
+	return t;
 }
 
 static __inline __attribute__((always_inline))
-uint64_t
+	uint64_t
 stop_tsc()
 {
-    uint64_t t;
-    __asm__ __volatile__(
-      "rdtscp\n\t"
-      "shl $32, %%rdx\n\t"
-      "or %%rdx, %0\n\t"
-      "lfence"
-      : "=a"(t)
-      :
-      // "memory" avoids reordering. rcx = TSC_AUX. rdx = TSC >> 32.
-      // "cc" = flags modified by SHL.
-      : "rcx", "rdx", "memory", "cc");
+	uint64_t t;
+	__asm__ __volatile__(
+		"rdtscp\n\t"
+		"shl $32, %%rdx\n\t"
+		"or %%rdx, %0\n\t"
+		"lfence"
+		: "=a"(t)
+		:
+		// "memory" avoids reordering. rcx = TSC_AUX. rdx = TSC >> 32.
+		// "cc" = flags modified by SHL.
+		: "rcx", "rdx", "memory", "cc");
 
-    return t;
+	return t;
 }
 
 
@@ -189,7 +192,7 @@ static int sock_connect(const char *servername, int port)
 				if((tmp=connect(sockfd, iterator->ai_addr, iterator->ai_addrlen))) {
 					fprintf(stdout, "failed connect \n");
 					close(sockfd);
-		                        sockfd = -1;
+					sockfd = -1;
 				}
 			}
 			else {
@@ -392,15 +395,15 @@ static int post_send(struct resources *res, int opcode)
 		switch(opcode)	{
 		case IBV_WR_SEND:
 			// fprintf(stdout, "Send Request was posted\n");
-      break;
+			break;
 
 		case IBV_WR_RDMA_READ:
 			// fprintf(stdout, "RDMA Read Request was posted\n");
-      break;
+			break;
 
 		case IBV_WR_RDMA_WRITE:
 			// fprintf(stdout, "RDMA Write Request was posted\n");
-      break;
+			break;
 
 		default:
 			fprintf(stdout, "Unknown Request was posted\n"); break;
@@ -414,19 +417,19 @@ static int post_send(struct resources *res, int opcode)
 /* Time the difference between an post_send and a poll_cq */
 static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* cycle_count)
 {
-  // From post_send
+	// From post_send
 	struct ibv_send_wr	sr;
 	struct ibv_sge		sge;
 	struct ibv_send_wr	*bad_wr = NULL;
 	int			rc;
 
-  // From poll_complete
+	// From poll_complete
 	struct ibv_wc	wc;
 	int		poll_result;
 
-  // Timing variables
-  uint64_t start_cycle_count;
-  uint64_t end_cycle_count;
+	// Timing variables
+	uint64_t start_cycle_count;
+	uint64_t end_cycle_count;
 
 
 	/* prepare the scatter/gather entry */
@@ -450,7 +453,7 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 	}
 
 	/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
-  start_cycle_count = start_tsc();
+	start_cycle_count = start_tsc();
 
 	rc = ibv_post_send(res->qp, &sr, &bad_wr);
 	if (rc)
@@ -459,7 +462,7 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 		poll_result = ibv_poll_cq(res->cq, 1, &wc);
 	} while (poll_result == 0);
 
-  end_cycle_count = stop_tsc();
+	end_cycle_count = stop_tsc();
 
 	if (poll_result < 0) {
 		/* poll CQ failed */
@@ -472,8 +475,8 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 	} else {
 		/* CQE found */
 		// fprintf(stdout, "completion was found in CQ with status 0x%x\n", wc.status);
-    // fprintf(stdout, "operation cycle time: %lu\n", end_cycle_count - start_cycle_count);
-    *cycle_count = end_cycle_count - start_cycle_count;
+		// fprintf(stdout, "operation cycle time: %lu\n", end_cycle_count - start_cycle_count);
+		*cycle_count = end_cycle_count - start_cycle_count;
 
 		/* check the completion status (here we don't care about the completion opcode */
 		if (wc.status != IBV_WC_SUCCESS) {
@@ -584,7 +587,7 @@ static int resources_create(struct resources *res)
 	int			 cq_size = 0;
 	int			 num_devices;
 	int			 rc = 0;
-  char     curr_num = 0;
+	char     curr_num = 0;
 
 
 	if (config.server_name)	{
@@ -683,10 +686,10 @@ static int resources_create(struct resources *res)
 	}
 
 	/* allocate the memory buffer that will hold the data */
-  if (!config.server_name)
-    size = SERVER_COLUMN_COUNT * SERVER_ROW_COUNT;
-  else
-    size = CLIENT_MSG_SIZE;
+	if (!config.server_name)
+		size = SERVER_COLUMN_COUNT * SERVER_ROW_COUNT;
+	else
+		size = CLIENT_MSG_SIZE;
 
 	res->buf = (char *) malloc(size);
 
@@ -696,16 +699,16 @@ static int resources_create(struct resources *res)
 		goto resources_create_exit;
 	}
 
-  if (!config.server_name) {
-    for (i = 0; i < SERVER_ROW_COUNT; i++) {
-      for (j = 0; j < SERVER_COLUMN_COUNT; j++) {
-        res->buf[i * SERVER_COLUMN_COUNT + j] = curr_num;
-        curr_num++;
-      }
-    }
-  }
-  else
-    memset(res->buf, 0 , size);
+	if (!config.server_name) {
+		for (i = 0; i < SERVER_ROW_COUNT; i++) {
+			for (j = 0; j < SERVER_COLUMN_COUNT; j++) {
+				res->buf[i * SERVER_COLUMN_COUNT + j] = curr_num;
+				curr_num++;
+			}
+		}
+	}
+	else
+		memset(res->buf, 0 , size);
 
 	/* register the memory buffer */
 	mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE;
@@ -991,7 +994,7 @@ static int connect_qp(struct resources *res)
 		const uint8_t *p = remote_con_data.gid;
 
 		fprintf(stdout, "Remote GID = %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
-					      p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
+				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 	}
 
 	/* modify the QP to init */
@@ -1013,7 +1016,7 @@ static int connect_qp(struct resources *res)
 
 	/* modify the QP to RTR */
 	rc = modify_qp_to_rtr(res->qp, remote_con_data.qp_num, remote_con_data.lid, remote_con_data.gid);
-	 if (rc) {
+	if (rc) {
 		fprintf(stderr, "failed to modify QP state to RTR (%s)\n", strerror(errno));
 		return rc;
 	}
@@ -1022,7 +1025,7 @@ static int connect_qp(struct resources *res)
 	if (rc) {
 		fprintf(stderr, "failed to modify QP state to RTS (%s)\n", strerror(errno));
 		return rc;
-	 }
+	}
 
 	fprintf(stdout, "QP state was change to RTS\n");
 
@@ -1169,8 +1172,8 @@ int main(int argc, char *argv[])
 	struct resources	res;
 	int			rc = 1;
 	char		temp_char;
-  int     i;
-  uint64_t cycle_count;
+	int     i;
+	uint64_t cycle_count;
 
 	/* parse the command line parameters */
 	while (1) {
@@ -1242,7 +1245,7 @@ int main(int argc, char *argv[])
 	/* connect the QPs */
 	if (connect_qp(&res)) {
 		fprintf(stderr, "failed to connect QPs\n");
- 		goto main_exit;
+		goto main_exit;
 	}
 
 	/* let the server post the sr */
@@ -1269,42 +1272,49 @@ int main(int argc, char *argv[])
 		goto main_exit;
 	}
 
-  if (config.server_name)
-    fprintf(stdout, "Beginning tests...\n----------------------------\n\n");
+	if (config.server_name)
+		fprintf(stdout, "Beginning tests...\n----------------------------\n\n");
 
 	/*  Now the client performs an RDMA read and then write on server.
 	 *  Note that the server has no idea these events have occured */
 
+	double cycles_to_nsec = get_cpu_mhz(false) / 1000; // cpu_ghz
+
 	if (config.server_name) {
-    for(i = 0; i < SERVER_COLUMN_COUNT; i++) {
-      /* First we read contents of server's buffer */
-      if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &cycle_count)) {
-        fprintf(stderr, "failed to post SR 2\n");
-        rc = 1;
-        goto main_exit;
-      }
+		for(i = 0; i < SERVER_COLUMN_COUNT; i++) {
+			uint64_t t1;
+			//uint64_t t2;
+			uint64_t t3;
+			/* First we read contents of server's buffer */
+			if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t1)) {
+				fprintf(stderr, "failed to post SR 2\n");
+				rc = 1;
+				goto main_exit;
+			}
 
-      fprintf(stdout, "[READ] Contents of server's buffer: '%hhu', it took %lu cycles\n", res.buf[0], cycle_count);
+			fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
 
-      /* Now we replace what's in the server's buffer */
-      res.buf[0] = (i + 1) % 256;
-      fprintf(stdout, "[WRITE] Now replacing it with: '%hhu'\n", res.buf[0]);
-      if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
-        fprintf(stderr, "failed to post SR 3\n");
-        rc = 1;
-        goto main_exit;
-      }
-      fprintf(stdout, "[WRITE] That took %lu cycles\n", cycle_count);
+			/* Now we replace what's in the server's buffer */
+			res.buf[0] = (i + 1) % 256;
+			fprintf(stdout, "[WRITE] [%04d] Now replacing it with: '%hhu',", i,res.buf[0]);
+			if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
+				fprintf(stderr, "failed to post SR 3\n");
+				rc = 1;
+				goto main_exit;
+			}
+			fprintf(stdout, "it took %lu cycles\n", cycle_count);
 
-      /* Then we read contents of server's buffer again */
-      if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &cycle_count)) {
-        fprintf(stderr, "failed to post SR 2\n");
-        rc = 1;
-        goto main_exit;
-      }
+			/* Then we read contents of server's buffer again */
+			if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t3)) {
+				fprintf(stderr, "failed to post SR 2\n");
+				rc = 1;
+				goto main_exit;
+			}
+			int64_t del = t1-t3;
 
-      fprintf(stdout, "[READ] Contents of server's buffer: '%hhu', it took %lu cycles\n", res.buf[0], cycle_count);
-    }
+			fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
+			fprintf(stdout, "[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, del, del * cycles_to_nsec);
+		}
 	}
 
 	/* Sync so server will know that client is done mucking with its memory */
