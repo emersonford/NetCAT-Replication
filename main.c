@@ -1303,7 +1303,7 @@ int main(int argc, char *argv[])
             fprintf(stdout, "[READ] Contents of server's buffer: '%hhu', it took %lu cycles\n", res.buf[0], cycle_count);
 
             /* Now we replace what's in the server's buffer */
-            res.buf[0] = (i + 1) % 256;
+            res.buf[0] = (i + 2) % 256;
             fprintf(stdout, "[WRITE] Now replacing it with: '%hhu'\n", res.buf[0]);
             if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
                 fprintf(stderr, "failed to post SR 3\n");
