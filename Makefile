@@ -1,12 +1,12 @@
 CC = gcc
 CFLAGS = -Wall -W -Werror -g -O2
 LDFLAGS = -libverbs
-TARGETS = RDMA_RC_Example
+TARGETS = main
 OBJECTS = RDMA_RC_Example.o get_clock.o
 
 all: $(TARGETS)
 
-RDMA_RC_Example: $(OBJECTS)
+main: $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)	
 
 
