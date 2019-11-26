@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -W -Werror -g -O2
+CFLAGS = -Wall -W -Werror -g -O2 -std=gnu99
 LDFLAGS = -libverbs
 TARGETS = main
 OBJECTS = main.o get_clock.o
