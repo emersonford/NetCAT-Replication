@@ -1345,25 +1345,25 @@ int main(int argc, char *argv[])
 		}
 	}
 
-  /* Sync so server will know that client is done mucking with its memory */
-  if (sock_sync_data(res.sock, 1, "W", &temp_char)) {  /* just send a dummy char back and forth */
-    fprintf(stderr, "sync error after RDMA ops\n");
-    rc = 1;
-    goto main_exit;
-  }
+	/* Sync so server will know that client is done mucking with its memory */
+	if (sock_sync_data(res.sock, 1, "W", &temp_char)) {  /* just send a dummy char back and forth */
+		fprintf(stderr, "sync error after RDMA ops\n");
+		rc = 1;
+		goto main_exit;
+	}
 
-  rc = 0;
+	rc = 0;
 
 main_exit:
-  if (resources_destroy(&res)) {
-    fprintf(stderr, "failed to destroy resources\n");
-    rc = 1;
-  }
+	if (resources_destroy(&res)) {
+		fprintf(stderr, "failed to destroy resources\n");
+		rc = 1;
+	}
 
-  if(config.dev_name)
-    free((char *) config.dev_name);
+	if(config.dev_name)
+		free((char *) config.dev_name);
 
-  fprintf(stdout, "\ntest result is %d\n", rc);
+	fprintf(stdout, "\ntest result is %d\n", rc);
 
-  return rc;
+	return rc;
 }
