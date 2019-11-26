@@ -463,7 +463,7 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 	sr.sg_list = &sge;
 	sr.num_sge = 1;
 	sr.opcode = opcode;
-	sr.send_flags = IBV_SEND_SIGNALED | IBV_SEND_INLINE;
+	sr.send_flags = IBV_SEND_SIGNALED;
 
 	if(opcode != IBV_WR_SEND) {
 		sr.wr.rdma.remote_addr = res->remote_props.addr;
