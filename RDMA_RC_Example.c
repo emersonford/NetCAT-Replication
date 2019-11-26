@@ -1,4 +1,4 @@
-/*test*/
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+#include <sched.h>
 #include "get_clock.h"
 
 #include <infiniband/verbs.h>
@@ -1230,6 +1231,14 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	/* set cpu affinity for client */
+	if (config.server_name) {
+		cpu_set_t s;
+		CPU_ZERO(&s);
+		CPU_SET(sched_getcpu(), &s);
+		sched_setaffinity(0, sizeof(cpu_set_t), &s);
+	}
+
 	/* print the used parameters for info */
 	print_config();
 
@@ -1280,6 +1289,9 @@ int main(int argc, char *argv[])
 
 	double cycles_to_nsec = get_cpu_mhz(false) / 1000; // cpu_ghz
 
+	//struct timespec sleeptime = {0, 100};
+	//nanosleep(&sleeptime, NULL);
+
 	if (config.server_name) {
 		for(i = 0; i < SERVER_COLUMN_COUNT; i++) {
 			uint64_t t1;
@@ -1293,6 +1305,7 @@ int main(int argc, char *argv[])
 			}
 
 			fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
+
 
 			/* Now we replace what's in the server's buffer */
 			res.buf[0] = (i + 1) % 256;
