@@ -1,3 +1,4 @@
+/* vim: set noet: */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,10 +26,10 @@
 
 #define DEBUG 0
 #define debug_print(fmt, ...) \
-    do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
+	do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
 
 #define nodebug_print(fmt, ...) \
-    do { if (!DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
+	do { if (!DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
 
 /* poll CQ timeout in millisec (2 seconds) */
 #define MAX_POLL_CQ_TIMEOUT 2000
@@ -116,8 +117,7 @@ start_tsc()
 }
 
 static __inline __attribute__((always_inline))
-	uint64_t
-stop_tsc()
+uint64_t stop_tsc()
 {
 	uint64_t t;
 	__asm__ __volatile__(
@@ -145,10 +145,10 @@ stop_tsc()
  * have been made).
  */
 void pin_all_memory() {
-    int r = mlockall(MCL_CURRENT | MCL_FUTURE);
-    if (r != 0) {
-      fprintf(stderr, "Could not lock all memory pages (%s)\n", strerror(errno));
-    }
+	int r = mlockall(MCL_CURRENT | MCL_FUTURE);
+	if (r != 0) {
+		fprintf(stderr, "Could not lock all memory pages (%s)\n", strerror(errno));
+	}
 }
 
 
@@ -591,7 +591,7 @@ static int resources_create(struct resources *res)
 	int			 cq_size = 0;
 	int			 num_devices;
 	int			 rc = 0;
-	char     curr_num = 0;
+	char			 curr_num = 0;
 
 
 	if (config.server_name)	{
@@ -1331,7 +1331,7 @@ int main(int argc, char *argv[])
 				}
 				delta = t1 - t3;
 
-                nodebug_print("%lu,%lu\n", t1, t3);
+				nodebug_print("%lu,%lu\n", t1, t3);
 				debug_print("[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
 				debug_print("[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta * cycles_to_nsec);
 			}
