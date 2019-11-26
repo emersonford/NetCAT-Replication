@@ -453,10 +453,10 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 		sr.wr.rdma.rkey = res->remote_props.rkey;
 	}
 
-	/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
-	start_cycle_count = start_tsc();
+		/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
+		start_cycle_count = start_tsc();
 
-	rc = ibv_post_send(res->qp, &sr, &bad_wr);
+		rc = ibv_post_send(res->qp, &sr, &bad_wr);
 	if (rc)
 		fprintf(stderr, "failed to post SR\n");
 	do {
@@ -465,8 +465,8 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 
 	end_cycle_count = stop_tsc();
 
-	if (poll_result < 0) {
-		/* poll CQ failed */
+		if (poll_result < 0) {
+			/* poll CQ failed */
 		fprintf(stderr, "poll CQ failed retval = %d, errno: %s\n", poll_result, strerror(errno));
 		rc = 1;
 	} else if (poll_result == 0) {
@@ -486,7 +486,7 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 		}
 	}
 
-	return rc;
+		return rc;
 }
 
 
@@ -1284,8 +1284,8 @@ int main(int argc, char *argv[])
 	if (config.server_name)
 		fprintf(stdout, "Beginning tests...\n----------------------------\n\n");
 
-	/*  Now the client performs an RDMA read and then write on server.
-	 *  Note that the server has no idea these events have occured */
+  /*  Now the client performs an RDMA read and then write on server.
+   *  Note that the server has no idea these events have occured */
 
 	double cycles_to_nsec = get_cpu_mhz(false) / 1000; // cpu_ghz
 
@@ -1330,25 +1330,25 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* Sync so server will know that client is done mucking with its memory */
-	if (sock_sync_data(res.sock, 1, "W", &temp_char)) {  /* just send a dummy char back and forth */
-		fprintf(stderr, "sync error after RDMA ops\n");
-		rc = 1;
-		goto main_exit;
-	}
+  /* Sync so server will know that client is done mucking with its memory */
+  if (sock_sync_data(res.sock, 1, "W", &temp_char)) {  /* just send a dummy char back and forth */
+    fprintf(stderr, "sync error after RDMA ops\n");
+    rc = 1;
+    goto main_exit;
+  }
 
-	rc = 0;
+  rc = 0;
 
 main_exit:
-	if (resources_destroy(&res)) {
-		fprintf(stderr, "failed to destroy resources\n");
-		rc = 1;
-	}
+  if (resources_destroy(&res)) {
+    fprintf(stderr, "failed to destroy resources\n");
+    rc = 1;
+  }
 
-	if(config.dev_name)
-		free((char *) config.dev_name);
+  if(config.dev_name)
+    free((char *) config.dev_name);
 
-	fprintf(stdout, "\ntest result is %d\n", rc);
+  fprintf(stdout, "\ntest result is %d\n", rc);
 
-	return rc;
+  return rc;
 }
