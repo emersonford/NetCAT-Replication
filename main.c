@@ -1114,15 +1114,15 @@ static int resources_destroy(struct resources *res)
  *  ******************************************************************************/
 static void print_config(void)
 {
-	fprintf(stdout,	" ------------------------------------------------\n");
-	fprintf(stdout,	" Device name	: \"%s\"\n", config.dev_name);
-	fprintf(stdout,	" IB port	: %u\n", config.ib_port);
+	debug_print(" ------------------------------------------------\n");
+	debug_print(" Device name	: \"%s\"\n", config.dev_name);
+	debug_print(" IB port	: %u\n", config.ib_port);
 	if (config.server_name)
 		debug_print("[client only] IP	: %s\n", config.server_name);
-	fprintf(stdout,	" TCP port	: %u\n", config.tcp_port);
+	debug_print(" TCP port	: %u\n", config.tcp_port);
 	if (config.gid_idx >= 0)
 		debug_print(" GID index	: %u\n", config.gid_idx);
-	fprintf(stdout,	" ------------------------------------------------\n\n");
+	debug_print(" ------------------------------------------------\n\n");
 }
 
 
