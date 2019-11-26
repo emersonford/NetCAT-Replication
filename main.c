@@ -1342,6 +1342,7 @@ int main(int argc, char *argv[])
 
 			fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
 			fprintf(stdout, "[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, del, del * cycles_to_nsec);
+			res.remote_props.addr++;
 		}
 	}
 
