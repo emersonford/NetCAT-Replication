@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <sys/mman.h>
 
 #include <sched.h>
 #include "get_clock.h"
@@ -25,6 +26,7 @@
 /* poll CQ timeout in millisec (2 seconds) */
 #define MAX_POLL_CQ_TIMEOUT 2000
 
+/* Parameters for cache probing size */
 #define CLIENT_MSG_SIZE 1
 #define SERVER_COLUMN_COUNT 4096
 #define SERVER_ROW_COUNT 1
@@ -125,9 +127,22 @@ stop_tsc()
 	return t;
 }
 
-
-
-
+/**
+ * Pin all current and future memory pages in memory so that the OS does not
+ * swap them to disk.
+ *
+ * Note that future mapping operations (e.g. mmap, stack expansion, etc)
+ * may fail if their memory cannot be pinned due to resource limits. Thus the
+ * check below may not capture all possible failures up front. It's probably
+ * best to call this at the end of initialisation (after most large allocations
+ * have been made).
+ */
+void pin_all_memory() {
+    int r = mlockall(MCL_CURRENT | MCL_FUTURE);
+    if (r != 0) {
+      fprintf(stderr, "Could not lock all memory pages (%s)!", strerror(errno));
+    }
+}
 
 
 /******************************************************************************
@@ -693,6 +708,7 @@ static int resources_create(struct resources *res)
 		size = CLIENT_MSG_SIZE;
 
 	res->buf = (char *) malloc(size);
+	pin_all_memory();
 
 	if (!res->buf) {
 		fprintf(stderr, "failed to malloc %Zu bytes to memory buffer\n", size);
@@ -1305,7 +1321,6 @@ int main(int argc, char *argv[])
 			}
 
 			fprintf(stdout, "[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
-
 
 			/* Now we replace what's in the server's buffer */
 			res.buf[0] = (i + 1) % 256;
