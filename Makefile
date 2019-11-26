@@ -12,6 +12,5 @@ main: $(OBJECTS)
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
->>>>>>> 3aa0d42179e1fee462112f8ec8b0ee56c2d813de
 clean:
 	\rm -f *.o $(TARGETS)
