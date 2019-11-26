@@ -1313,11 +1313,11 @@ int main(int argc, char *argv[])
 
 	if (config.server_name) {
 		orig_addr = res.remote_props.addr;
+
 		for(i = 0; i < SERVER_COLUMN_COUNT; i++) {
 			for(j = 0; j < SERVER_ROW_COUNT; j++) {
-				uint64_t t1;
-				//uint64_t t2;
-				uint64_t t3;
+				res.remote_props.addr = orig_addr + j * SERVER_COLUMN_COUNT + i;
+
 				/* First we read contents of server's buffer */
 				if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t1)) {
 					fprintf(stderr, "failed to post SR 2\n");
