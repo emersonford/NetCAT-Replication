@@ -28,7 +28,7 @@
 #define debug_print(fmt, ...) \
 	do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
 
-#define nodebug_print(fmt, ...) \
+#define data_print(fmt, ...) \
 	do { if (!DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
 
 /* poll CQ timeout in millisec (2 seconds) */
@@ -1331,7 +1331,7 @@ int main(int argc, char *argv[])
 				}
 				delta = t1 - t3;
 
-				nodebug_print("%lu,%lu\n", t1, t3);
+				data_print("%lu,%lu\n", t1, t3);
 				debug_print("[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
 				debug_print("[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta * cycles_to_nsec);
 			}
