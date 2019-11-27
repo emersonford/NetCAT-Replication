@@ -1,6 +1,6 @@
 library(ggplot2)
 library(reshape2)
-file <- "first-random-trial.csv"
+file <- "trial-mtu-2048.csv"
 
 data <- read.csv(file)
 
@@ -11,4 +11,4 @@ frame <- data.frame(first_read=data[,1], second_read=data[,2])
 # plot(read1.d, xlim=c(4000, 5000))
 # polygon(read1.d, col=rgb(1, 0, 0, 0.5))
 
-ggplot(melt(frame), aes(x = value, fill = variable)) + geom_density(alpha=0.5) + xlim(4150, 4750) + labs(title=file, x="cycles", fill="read type")
+ggplot(melt(frame), aes(x = value, fill = variable)) + geom_density(alpha=0.5) + xlim(3500, 4500) + labs(title=file, x="cycles", fill="read type")
