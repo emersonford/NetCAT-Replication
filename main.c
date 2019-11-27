@@ -24,7 +24,7 @@
 
 #include <errno.h>
 
-#define DEBUG 0
+#define DEBUG 1
 #define debug_print(fmt, ...) \
 	do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
 
@@ -1300,7 +1300,7 @@ int main(int argc, char *argv[])
 	if (config.server_name) {
 		orig_addr = res.remote_props.addr;
 
-		for(i = 0; i < SERVER_COLUMN_COUNT; i++) {
+		for(i = 0; i < SERVER_COLUMN_COUNT; i+=CLIENT_MSG_SIZE) {
 			for(j = 0; j < SERVER_ROW_COUNT; j++) {
 				res.remote_props.addr = orig_addr + j * SERVER_COLUMN_COUNT + i;
 
