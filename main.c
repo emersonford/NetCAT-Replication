@@ -458,10 +458,10 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 		sr.wr.rdma.rkey = res->remote_props.rkey;
 	}
 
-		/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
-		start_cycle_count = start_tsc();
+	/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
+	start_cycle_count = start_tsc();
 
-		rc = ibv_post_send(res->qp, &sr, &bad_wr);
+	rc = ibv_post_send(res->qp, &sr, &bad_wr);
 	if (rc)
 		fprintf(stderr, "failed to post SR\n");
 	do {
@@ -470,8 +470,8 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 
 	end_cycle_count = stop_tsc();
 
-		if (poll_result < 0) {
-			/* poll CQ failed */
+	if (poll_result < 0) {
+		/* poll CQ failed */
 		fprintf(stderr, "poll CQ failed retval = %d, errno: %s\n", poll_result, strerror(errno));
 		rc = 1;
 	} else if (poll_result == 0) {
