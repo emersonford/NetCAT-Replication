@@ -35,9 +35,9 @@
 #define MAX_POLL_CQ_TIMEOUT 2000
 
 /* Parameters for cache probing size */
-#define CLIENT_MSG_SIZE 1
-#define SERVER_COLUMN_COUNT 8192
-#define SERVER_ROW_COUNT 64
+#define CLIENT_MSG_SIZE 64
+#define SERVER_COLUMN_COUNT 16384
+#define SERVER_ROW_COUNT 128
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
