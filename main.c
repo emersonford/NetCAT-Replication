@@ -21,6 +21,7 @@
 #include "get_clock.h"
 
 #include <infiniband/verbs.h>
+#include <infiniband/verbs_exp.h>
 
 #include <errno.h>
 
@@ -437,6 +438,8 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 	uint64_t start_cycle_count;
 	uint64_t end_cycle_count;
 
+	void* ibv_post_send_func_pointer = ibv_exp_get_provider_func(ctx->context,IBV_POST_SEND_FUNC);
+	void* ibv_poll_cq_func_pointer = ibv_exp_get_provider_func(ctx->context,IBV_POLL_CQ_FUNC);
 
 	/* prepare the scatter/gather entry */
 	memset(&sge, 0, sizeof(sge));
@@ -458,20 +461,20 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 		sr.wr.rdma.rkey = res->remote_props.rkey;
 	}
 
-		/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
-		start_cycle_count = start_tsc();
+	/* there is a Receive Request in the responder side, so we won't get any into RNR flow */
+	start_cycle_count = start_tsc();
 
-		rc = ibv_post_send(res->qp, &sr, &bad_wr);
+	rc = ibv_post_send_func_pointer(res->qp, &sr, &bad_wr);
 	if (rc)
 		fprintf(stderr, "failed to post SR\n");
 	do {
-		poll_result = ibv_poll_cq(res->cq, 1, &wc);
+		poll_result = ibv_poll_cq_func_pointer(res->cq, 1, &wc);
 	} while (poll_result == 0);
 
 	end_cycle_count = stop_tsc();
 
-		if (poll_result < 0) {
-			/* poll CQ failed */
+	if (poll_result < 0) {
+		/* poll CQ failed */
 		fprintf(stderr, "poll CQ failed retval = %d, errno: %s\n", poll_result, strerror(errno));
 		rc = 1;
 	} else if (poll_result == 0) {
