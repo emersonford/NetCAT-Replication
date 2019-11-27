@@ -1,8 +1,8 @@
 library(ggplot2)
 library(reshape2)
-file <- "16384-columns-nanoseconds.csv"
-left.x.lim <- 7500
-right.x.lim <- 8500
+file <- "trial-mtu-2048-random-no-writes.csv"
+left.x.lim <- 3900
+right.x.lim <- 4500
 
 data <- read.csv(file)
 
