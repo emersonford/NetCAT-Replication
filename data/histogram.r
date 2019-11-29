@@ -1,8 +1,8 @@
 library(ggplot2)
 library(reshape2)
 file <- "trial-notchpeak-4.csv"
-left.x.lim <- 4000
-right.x.lim <- 5250
+left.x.lim <- 4200
+right.x.lim <- 5000
 
 data <- read.csv(file)
 
