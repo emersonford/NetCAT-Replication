@@ -37,10 +37,10 @@
 
 /* Parameters for cache probing size */
 #define CLIENT_MSG_SIZE 1
-#define SERVER_COLUMN_COUNT 4096
-#define SERVER_ROW_COUNT 4096
+#define SERVER_COLUMN_COUNT 16384
+#define SERVER_ROW_COUNT 128
 
-#define ITERS 1000000
+#define ITERS 500000
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
