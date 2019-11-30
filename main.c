@@ -40,7 +40,7 @@
 #define SERVER_COLUMN_COUNT 16384
 #define SERVER_ROW_COUNT 128
 
-#define ITERS 100000
+#define ITERS 10000
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
