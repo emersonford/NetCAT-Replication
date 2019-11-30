@@ -40,7 +40,7 @@
 #define SERVER_COLUMN_COUNT 4096
 #define SERVER_ROW_COUNT 4096
 
-#define ITERS 5000
+#define ITERS 1000000
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
@@ -1334,7 +1334,7 @@ int main(int argc, char *argv[])
 	/*  Now the client performs an RDMA read and then write on server.
 	 *  Note that the server has no idea these events have occured */
 
-	double cycles_to_nsec = get_cpu_mhz(false) / 1000; // cpu_ghz
+	double cycles_to_usec = get_cpu_mhz(false); // cpu_ghz
 
 	//struct timespec sleeptime = {0, 100};
 	//nanosleep(&sleeptime, NULL);
@@ -1372,9 +1372,9 @@ int main(int argc, char *argv[])
 			}
 			delta = t1 - t3;
 
-			nodebug_print("%lu,%lu,%f\n", t1, t3, delta*cycles_to_nsec);
+			nodebug_print("%lu,%lu,%f,%f\n", t1, t3, (t1 * 1000) / cycles_to_usec, (t3 * 1000) / cycles_to_usec);
 			debug_print("[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
-			debug_print("[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta * cycles_to_nsec);
+			debug_print("[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta * cycles_to_usec);
 			if (i == CACHE_LINES) {
 				memset(bm, 0, sizeof(bm));
 			}
