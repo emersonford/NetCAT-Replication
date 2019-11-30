@@ -1,11 +1,11 @@
 library(ggplot2)
 library(reshape2)
-file <- "trial-notchpeak-ns-6.csv"
-left.x.lim <- 2
-right.x.lim <- 2.75
+file <- "trial-notchpeak-ns-7.csv"
+left.x.lim <- 2000
+right.x.lim <- 2750
 first.read.col <- 3
 second.read.col <- 4
-x.label <- "microseconds"
+x.label <- "nanoseconds"
 
 data <- read.csv(file)
 
