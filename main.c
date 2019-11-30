@@ -1331,7 +1331,7 @@ int main(int argc, char *argv[])
 				}
 				delta = t1 - t3;
 
-				data_print("%lu,%lu,%f,%f\n", t1, t3, t1 / cycles_to_usec, t3 / cycles_to_usec);
+				data_print("%lu,%lu,%f,%f\n", t1, t3, (t1 * 1000) / cycles_to_usec, (t3 * 1000) / cycles_to_usec);
 				debug_print("[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
 				debug_print("[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta / cycles_to_usec);
 			}
