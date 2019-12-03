@@ -1,3 +1,4 @@
+/* vim: set noet: */
 /*
  * Copyright (c) 2005 Mellanox Technologies Ltd.  All rights reserved.
  *
@@ -142,11 +143,11 @@ static double proc_get_cpu_mhz(int no_cpu_freq_warn)
 	int print_flag = 0;
 	double delta;
 
-	#if defined(__FreeBSD__)
+#if defined(__FreeBSD__)
 	f = popen("/sbin/sysctl hw.clockrate","r");
-	#else
+#else
 	f = fopen("/proc/cpuinfo","r");
-	#endif
+#endif
 
 	if (!f)
 		return 0.0;
@@ -154,13 +155,13 @@ static double proc_get_cpu_mhz(int no_cpu_freq_warn)
 		double m;
 		int rc;
 
-		#if defined (__ia64__)
+#if defined (__ia64__)
 		/* Use the ITC frequency on IA64 */
 		rc = sscanf(buf, "itc MHz : %lf", &m);
-		#elif defined (__PPC__) || defined (__PPC64__)
+#elif defined (__PPC__) || defined (__PPC64__)
 		/* PPC has a different format as well */
 		rc = sscanf(buf, "clock : %lf", &m);
-		#elif defined (__sparc__) && defined (__arch64__)
+#elif defined (__sparc__) && defined (__arch64__)
 		/*
 		 * on sparc the /proc/cpuinfo lines that hold
 		 * the cpu freq in HZ are as follow:
@@ -175,13 +176,13 @@ static double proc_get_cpu_mhz(int no_cpu_freq_warn)
 		strncpy(s, "0x", strlen("0x"));
 		rc = sscanf(s, "%lf", &m);
 		m /= 1000000;
-		#else
-		#if defined (__FreeBSD__)
+#else
+#if defined (__FreeBSD__)
 		rc = sscanf(buf, "hw.clockrate: %lf", &m);
-		#else
+#else
 		rc = sscanf(buf, "cpu MHz : %lf", &m);
-		#endif
-		#endif
+#endif
+#endif
 
 		if (rc != 1)
 			continue;
@@ -212,16 +213,16 @@ static double proc_get_cpu_mhz(int no_cpu_freq_warn)
 
 double get_cpu_mhz(int no_cpu_freq_warn)
 {
-	#if defined(__s390x__) || defined(__s390__)
+#if defined(__s390x__) || defined(__s390__)
 	return sample_get_cpu_mhz();
-	#else
+#else
 	double sample, proc, delta;
 	sample = sample_get_cpu_mhz();
 	proc = proc_get_cpu_mhz(no_cpu_freq_warn);
-	#ifdef __aarch64__
+#ifdef __aarch64__
 	if (proc < 1)
 		proc = sample;
-	#endif
+#endif
 	if (!proc || !sample)
 		return 0;
 

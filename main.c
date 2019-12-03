@@ -1085,41 +1085,41 @@ int main(int argc, char *argv[])
 			break;
 
 		switch (c) {
-		case 'p':
-			config.tcp_port = strtoul(optarg, NULL, 0);
-			break;
+			case 'p':
+				config.tcp_port = strtoul(optarg, NULL, 0);
+				break;
 
-		case 'd':
-			config.dev_name = strdup(optarg);
-			break;
+			case 'd':
+				config.dev_name = strdup(optarg);
+				break;
 
-		case 'i':
-			config.ib_port = strtoul(optarg, NULL, 0);
-			if (config.ib_port < 0) {
+			case 'i':
+				config.ib_port = strtoul(optarg, NULL, 0);
+				if (config.ib_port < 0) {
+					usage(argv[0]);
+					return 1;
+				}
+				break;
+
+			case 'g':
+				config.gid_idx = strtoul(optarg, NULL, 0);
+				if (config.gid_idx < 0) {
+					usage(argv[0]);
+					return 1;
+				}
+				break;
+
+			case 'n':
+				config.iters = strtoul(optarg, NULL, 0);
+				break;
+
+			case 'm':
+				config.mode = strtoul(optarg, NULL, 0);
+				break;
+
+			default:
 				usage(argv[0]);
 				return 1;
-			}
-			break;
-
-		case 'g':
-			config.gid_idx = strtoul(optarg, NULL, 0);
-			if (config.gid_idx < 0) {
-				usage(argv[0]);
-				return 1;
-			}
-			break;
-
-		case 'n':
-			config.iters = strtoul(optarg, NULL, 0);
-			break;
-
-		case 'm':
-			config.mode = strtoul(optarg, NULL, 0);
-			break;
-
-		default:
-			usage(argv[0]);
-			return 1;
 		}
 	}
 
@@ -1192,29 +1192,29 @@ int main(int argc, char *argv[])
 		start_addr = res.remote_props.addr;
 
 		switch (config.mode) {
-		case 0: /* seq */
-			for (i = 0; i < SERVER_COLUMN_COUNT; i+=CLIENT_MSG_SIZE) {
-				for (j = 0; j < SERVER_ROW_COUNT; ++j) {
-					if (read_write_read(&res, start_addr + j * SERVER_COLUMN_COUNT + i, cycles_to_usec)) {
+			case 0: /* seq */
+				for (i = 0; i < SERVER_COLUMN_COUNT; i+=CLIENT_MSG_SIZE) {
+					for (j = 0; j < SERVER_ROW_COUNT; ++j) {
+						if (read_write_read(&res, start_addr + j * SERVER_COLUMN_COUNT + i, cycles_to_usec)) {
+							rc = 1;
+							goto main_exit;
+						}
+					}
+				}
+				break;
+
+			case 1: /* rand */
+				for (i = 0; i < config.iters; ++i) {
+					if (read_write_read(&res, start_addr + rand_line(), cycles_to_usec)) {
 						rc = 1;
 						goto main_exit;
 					}
-				}
-			}
-			break;
 
-		case 1: /* rand */
-			for (i = 0; i < config.iters; ++i) {
-				if (read_write_read(&res, start_addr + rand_line(), cycles_to_usec)) {
-					rc = 1;
-					goto main_exit;
+					if (i == CACHE_LINES) {
+						memset(bm, 0, sizeof(bm));
+					}
 				}
-
-				if (i == CACHE_LINES) {
-					memset(bm, 0, sizeof(bm));
-				}
-			}
-			break;
+				break;
 		}
 	}
 

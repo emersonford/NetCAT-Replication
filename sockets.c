@@ -1,3 +1,4 @@
+/* vim: set noet: */
 #include <stdio.h>
 #include <unistd.h>
 #include <netdb.h>
