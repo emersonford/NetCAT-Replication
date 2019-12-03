@@ -37,6 +37,8 @@
 #ifndef GET_CLOCK_H
 #define GET_CLOCK_H
 
+#include <stdint.h>
+
 #if defined (__x86_64__) || defined(__i386__)
 /* Note: only x86 CPUs which have rdtsc instruction are supported. */
 typedef unsigned long long cycles_t;
