@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <sched.h>
+#include <emmintrin.h>
 
 #include <infiniband/verbs.h>
 
@@ -299,7 +300,7 @@ static void usage(const char *argv0)
 			"Number of iterations to perform in the test "
 			"(default "L(ITERS)")\n");
 #undef L
-	fprintf(stdout, " -m, --mode <mode>  set to 0 for seq or 1 for rand (default 0)\n");
+	fprintf(stdout, " -m, --mode <mode>  set to 0 for seq or 1 for rand or 2 for clflush (default 0)\n");
 }
 
 static int read_write_read(struct resources *res, uint64_t target_addr, double cycles_to_usec) {
@@ -520,6 +521,44 @@ int main(int argc, char *argv[])
 					}
 				}
 				break;
+
+			case 2: /* single byte */
+				for (i = 0; i < config.iters; ++i) {
+					if (read_write_read(&res, start_addr, cycles_to_usec)) {
+						rc = 1;
+						goto main_exit;
+					}
+
+					if (sock_sync_data(res.sock, 1, "A", &temp_char)) {  /* just send a dummy char back and forth */
+						fprintf(stderr, "sync error after RDMA ops\n");
+						rc = 1;
+						goto main_exit;
+					}
+
+					if (sock_sync_data(res.sock, 1, "B", &temp_char)) {  /* just send a dummy char back and forth */
+						fprintf(stderr, "sync error after RDMA ops\n");
+						rc = 1;
+						goto main_exit;
+					}
+				}
+				break;
+		}
+	}
+	else if (config.mode == 2) {
+		for (i = 0; i < config.iters; ++i) {
+			if (sock_sync_data(res.sock, 1, "A", &temp_char)) {  /* just send a dummy char back and forth */
+				fprintf(stderr, "sync error after RDMA ops\n");
+				rc = 1;
+				goto main_exit;
+			}
+
+			_mm_clflush(res.buf);
+
+			if (sock_sync_data(res.sock, 1, "B", &temp_char)) {  /* just send a dummy char back and forth */
+				fprintf(stderr, "sync error after RDMA ops\n");
+				rc = 1;
+				goto main_exit;
+			}
 		}
 	}
 
