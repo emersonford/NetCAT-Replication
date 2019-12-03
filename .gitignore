@@ -1,3 +1,4 @@
 *.o
 main
 data/data.out
+data/.Rdata

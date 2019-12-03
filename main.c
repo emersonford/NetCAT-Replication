@@ -51,6 +51,7 @@ unsigned int rand_line() {
 	return r;
 }
 
+/* default config */
 struct config_t config = {
 	NULL,	/* dev_name */
 	NULL,	/* server_name */
@@ -320,7 +321,7 @@ static int read_write_read(struct resources *res, uint64_t target_addr, double c
 	debug_print("[READ]  Contents of server's buffer: '%hhu', it took %lu cycles\n", res->buf[0], read1_cycles);
 
 	/* Now we replace what's in the client's buffer to write to the server's buffer.
-	 * This should pull this bit of memory into cache. */
+	 * This should pull this target_addr memory into cache. */
 	res->buf[0] = res->buf[0] + 2;
 	debug_print("[WRITE] Now replacing it with: '%hhu',", res->buf[0]);
 	if (post_send_poll_complete(res, IBV_WR_RDMA_WRITE, &write_cyclces)) {
