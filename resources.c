@@ -526,4 +526,3 @@ int resources_destroy(struct resources *res)
 
 	return rc;
 }
-

@@ -7,26 +7,6 @@
 
 #include "sockets.h"
 
-/******************************************************************************
- * *	Function: sock_connect
- * *
- *  *
- *  *	Input
- *  *	servername    URL of server to connect to (NULL for server mode)
- *  *	port	port of service
- *  *
- *  *	Output
- *  *	none
- *  *
- *  *	Returns
- *  *	socket (fd) on success, negative error code on failure
- *  *
- *  *	Description
- *  *	Connect a socket.  If servername is specified a client connection will be
- *  *	initiated to the indicated server and port.  Otherwise listen on the
- *  *	indicated port for an incoming connection.
- *  *
- *  ******************************************************************************/
 int sock_connect(const char *servername, int port)
 {
 	struct addrinfo	*resolved_addr = NULL;
