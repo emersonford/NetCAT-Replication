@@ -127,49 +127,6 @@ struct config_t config = {
 };
 
 /**
- * Source: https://github.com/google/highwayhash/blob/master/highwayhash/tsc_timer.h
- *
- * Accurately measures the cycle start and cycle end count.
- */
-static __inline __attribute__((always_inline))
-	uint64_t
-start_tsc()
-{
-	uint64_t t;
-	__asm__ __volatile__(
-		"lfence\n\t"
-		"rdtsc\n\t"
-		"shl $32, %%rdx\n\t"
-		"or %%rdx, %0\n\t"
-		"lfence"
-		: "=a"(t)
-		:
-		// "memory" avoids reordering. rdx = TSC >> 32.
-		// "cc" = flags modified by SHL.
-		: "rdx", "memory", "cc");
-
-	return t;
-}
-
-static __inline __attribute__((always_inline))
-uint64_t stop_tsc()
-{
-	uint64_t t;
-	__asm__ __volatile__(
-		"rdtscp\n\t"
-		"shl $32, %%rdx\n\t"
-		"or %%rdx, %0\n\t"
-		"lfence"
-		: "=a"(t)
-		:
-		// "memory" avoids reordering. rcx = TSC_AUX. rdx = TSC >> 32.
-		// "cc" = flags modified by SHL.
-		: "rcx", "rdx", "memory", "cc");
-
-	return t;
-}
-
-/**
  * Pin all current and future memory pages in memory so that the OS does not
  * swap them to disk.
  *
