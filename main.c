@@ -302,7 +302,7 @@ static void usage(const char *argv0)
 	fprintf(stdout, " -m, --mode <mode>  set to 0 for seq or 1 for rand (default 0)\n");
 }
 
-int read_write_read(struct resources *res, uint64_t target_addr, double cycles_to_usec) {
+static int read_write_read(struct resources *res, uint64_t target_addr, double cycles_to_usec) {
 	uint64_t write_cyclces, orig_addr, read1_cycles, read2_cycles;
 	int64_t delta;
 
