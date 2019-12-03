@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -W -Werror -g -O2 -std=gnu11
 LDFLAGS = -libverbs
 TARGETS = main
-OBJECTS = main.o get_clock.o sockets.o
+OBJECTS = main.o get_clock.o sockets.o resources.o
 
 all: $(TARGETS)
 
