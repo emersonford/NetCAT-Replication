@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <inttypes.h>
 #include <endian.h>
@@ -26,7 +27,7 @@
 
 #define DEBUG 0
 #define debug_print(fmt, ...) \
-	do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
+	if (DEBUG) { fprintf(stdout, fmt, ##__VA_ARGS__); }
 
 #define data_print(fmt, ...) \
 	do { if (!DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
@@ -39,6 +40,8 @@
 #define SERVER_COLUMN_COUNT 16384
 #define SERVER_ROW_COUNT 128
 
+#define ITERS 10000
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
 	static inline uint64_t ntohll(uint64_t x) { return bswap_64(x); }
@@ -49,6 +52,34 @@
 #error __BYTE_ORDER is neither __LITTLE_ENDIAN nor __BIG_ENDIAN
 #endif
 
+#define CACHE_SIZE 64
+#define CACHE_LINES (SERVER_ROW_COUNT * SERVER_COLUMN_COUNT / CACHE_SIZE)
+#define BM_BITS_PER_WORD (sizeof(uint64_t) * CHAR_BIT)
+#define BM_WORDS (CACHE_LINES / BM_BITS_PER_WORD)
+
+uint64_t bm[BM_WORDS] = {0};
+#define WORD_OFFSET(b) ((b) / BM_BITS_PER_WORD)
+#define BIT_OFFSET(b)  ((b) % BM_BITS_PER_WORD)
+
+void bm_set(unsigned int addr) {
+	bm[WORD_OFFSET(addr)] |= 1ull << BIT_OFFSET(addr);
+}
+void bm_clear(unsigned int addr) {
+	bm[WORD_OFFSET(addr)] &= ~(1ull << BIT_OFFSET(addr));
+}
+
+bool bm_read(unsigned int addr) {
+	return (bm[WORD_OFFSET(addr)] & (1ull << BIT_OFFSET(addr))) != 0;
+}
+
+unsigned int rand_line() {
+	unsigned int r;
+	while (bm_read(r = rand() % CACHE_LINES));
+	bm_set(r);
+	return r;
+}
+
+
 /* structure of test parameters */
 struct config_t {
 	const char	*dev_name;	/* IB device name */
@@ -56,6 +87,8 @@ struct config_t {
 	u_int32_t	tcp_port;	/* server TCP port */
 	int		ib_port;	/* local IB port to work with */
 	int		gid_idx;	/* gid index to use */
+	unsigned int	iters;		/* number of iterations */
+	int		mode; /* 0 for seq, 1 for rand */
 };
 
 
@@ -88,7 +121,9 @@ struct config_t config = {
 	NULL,	/* server_name */
 	19875,	/* tcp_port */
 	1,	/* ib_port */
-	-1	/* gid_idx */
+	-1,	/* gid_idx */
+	ITERS, /* iters */
+	0 /* mode */
 };
 
 /**
@@ -437,7 +472,6 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 	uint64_t start_cycle_count;
 	uint64_t end_cycle_count;
 
-
 	/* prepare the scatter/gather entry */
 	memset(&sge, 0, sizeof(sge));
 	sge.addr = (uintptr_t)res->buf;
@@ -489,7 +523,7 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 		}
 	}
 
-		return rc;
+	return rc;
 }
 
 
@@ -1151,8 +1185,58 @@ static void usage(const char *argv0)
 	fprintf(stdout, "Options:\n");
 	fprintf(stdout, " -p, --port <port> listen on/connect to port <port> (default 18515)\n");
 	fprintf(stdout, " -d, --ib-dev <dev> use IB device <dev> (default first device found)\n");
-	fprintf(stdout, "  -i, --ib-port <port>   use port <port> of IB device (default 1)\n");
-	fprintf(stdout, "  -g, --gid_idx <gid index>   gid index to be used in GRH (default not used)\n");
+	fprintf(stdout, " -i, --ib-port <port>   use port <port> of IB device (default 1)\n");
+	fprintf(stdout, " -g, --gid_idx <gid index>   gid index to be used in GRH (default not used)\n");
+#define L(x) #x
+	fprintf(stdout, " -n, --iterations <iterations>  "
+			"Number of iterations to perform in the test "
+			"(default "L(ITERS)")\n");
+#undef L
+	fprintf(stdout, " -m, --mode <mode>  set to 0 for seq or 1 for rand (default 0)\n");
+}
+
+int read_write_read(struct resources *res, uint64_t target_addr, double cycles_to_usec) {
+	uint64_t write_cyclces, orig_addr, read1_cycles, read2_cycles;
+	int64_t delta;
+
+	/* Store the original addr so we can change back to it after we're done. */
+	orig_addr = res->remote_props.addr;
+	res->remote_props.addr = target_addr;
+
+	/* First read the contents of the server's buffer.
+	 * This should be a cache miss. */
+	if (post_send_poll_complete(res, IBV_WR_RDMA_READ, &read1_cycles)) {
+		fprintf(stderr, "failed to post SR 2\n");
+		return 1;
+	}
+	debug_print("[READ]  Contents of server's buffer: '%hhu', it took %lu cycles\n", res->buf[0], read1_cycles);
+
+	/* Now we replace what's in the server's buffer.
+	 * This should pull this bit of memory into cache. */
+	// res->buf[0] = res->buf[0] + 2;
+	debug_print("[WRITE] Now replacing it with: '%hhu',", res->buf[0]);
+	if (post_send_poll_complete(res, IBV_WR_RDMA_WRITE, &write_cyclces)) {
+		fprintf(stderr, "failed to post SR 3\n");
+		return 1;
+	}
+	debug_print("it took %lu cycles\n", write_cyclces);
+
+	/* Then we read contents of server's buffer again.
+	 * This should be a cache hit. */
+	if (post_send_poll_complete(res, IBV_WR_RDMA_READ, &read2_cycles)) {
+		fprintf(stderr, "failed to post SR 2\n");
+		return 1;
+	}
+	delta = read1_cycles - read2_cycles;
+
+	data_print("%lu,%lu,%f,%f\n", read1_cycles, read2_cycles, (read1_cycles * 1000) / cycles_to_usec, (read2_cycles * 1000) / cycles_to_usec);
+	debug_print("[READ]  Contents of server's buffer: '%hhu', it took %lu cycles\n", res->buf[0], read2_cycles);
+	debug_print("[DIFF]  %5ld cycles = %06.1f nsec\n", delta, delta / cycles_to_usec);
+
+	/* Restore the original addr */
+	res->remote_props.addr = orig_addr;
+
+	return 0;
 }
 
 /******************************************************************************
@@ -1177,9 +1261,8 @@ int main(int argc, char *argv[])
 	struct resources	res;
 	int			rc = 1;
 	char		temp_char;
-	int     i, j;
-	uint64_t cycle_count, orig_addr, t1, t3;
-    int64_t delta;
+	unsigned int		i, j;
+	uint64_t start_addr;
 
 	/* parse the command line parameters */
 	while (1) {
@@ -1190,10 +1273,12 @@ int main(int argc, char *argv[])
 			{.name = "ib-dev",	.has_arg = 1,  .val = 'd' },
 			{.name = "ib-port",     .has_arg = 1,  .val = 'i' },
 			{.name = "gid-idx",     .has_arg = 1,  .val = 'g' },
+			{.name = "iterations",  .has_arg = 1,  .val = 'n' },
+			{.name = "mode",		.has_arg = 1,  .val = 'm'},
 			{.name = NULL,		.has_arg = 0,  .val = '\0'}
 		};
 
-		c = getopt_long(argc, argv, "p:d:i:g:", long_options, NULL);
+		c = getopt_long(argc, argv, "p:d:i:g:n:m:", long_options, NULL);
 		if (c == -1)
 			break;
 
@@ -1220,6 +1305,14 @@ int main(int argc, char *argv[])
 				usage(argv[0]);
 				return 1;
 			}
+			break;
+
+		case 'n':
+			config.iters = strtoul(optarg, NULL, 0);
+			break;
+
+		case 'm':
+			config.mode = strtoul(optarg, NULL, 0);
 			break;
 
 		default:
@@ -1289,52 +1382,37 @@ int main(int argc, char *argv[])
 	if (config.server_name)
 		debug_print("Beginning tests...\n----------------------------\n\n");
 
-	/*  Now the client performs an RDMA read and then write on server.
-	 *  Note that the server has no idea these events have occured */
-
 	double cycles_to_usec = get_cpu_mhz(false);
 
-	//struct timespec sleeptime = {0, 100};
-	//nanosleep(&sleeptime, NULL);
-
+	/*  Now the client performs an RDMA read and then write on server.
+	 *  Note that the server has no idea these events have occured */
 	if (config.server_name) {
-		orig_addr = res.remote_props.addr;
+		start_addr = res.remote_props.addr;
 
-		for(i = 0; i < SERVER_COLUMN_COUNT; i+=CLIENT_MSG_SIZE) {
-			for(j = 0; j < SERVER_ROW_COUNT; j++) {
-				res.remote_props.addr = orig_addr + j * SERVER_COLUMN_COUNT + i;
-
-				/* First we read contents of server's buffer */
-				if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t1)) {
-					fprintf(stderr, "failed to post SR 2\n");
-					rc = 1;
-					goto main_exit;
+		switch (config.mode) {
+		case 0: /* seq */
+			for (i = 0; i < SERVER_COLUMN_COUNT; i+=CLIENT_MSG_SIZE) {
+				for (j = 0; j < SERVER_ROW_COUNT; ++j) {
+					if (read_write_read(&res, start_addr + j * SERVER_COLUMN_COUNT + i, cycles_to_usec)) {
+						rc = 1;
+						goto main_exit;
+					}
 				}
-
-				debug_print("[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t1);
-
-				/* Now we replace what's in the server's buffer */
-				res.buf[0] = (i + 2) % 256;
-				debug_print("[WRITE] [%04d] Now replacing it with: '%hhu',", i,res.buf[0]);
-				if (post_send_poll_complete(&res, IBV_WR_RDMA_WRITE, &cycle_count)) {
-					fprintf(stderr, "failed to post SR 3\n");
-					rc = 1;
-					goto main_exit;
-				}
-				debug_print("it took %lu cycles\n", cycle_count);
-
-				/* Then we read contents of server's buffer again */
-				if (post_send_poll_complete(&res, IBV_WR_RDMA_READ, &t3)) {
-					fprintf(stderr, "failed to post SR 2\n");
-					rc = 1;
-					goto main_exit;
-				}
-				delta = t1 - t3;
-
-				data_print("%lu,%lu,%f,%f\n", t1, t3, (t1 * 1000) / cycles_to_usec, (t3 * 1000) / cycles_to_usec);
-				debug_print("[READ]  [%04d] Contents of server's buffer: '%hhu', it took %lu cycles\n", i,res.buf[0], t3);
-				debug_print("[DIFF]  [%04d] %5ld cycles = %06.1f nsec\n", i, delta, delta / cycles_to_usec);
 			}
+			break;
+
+		case 1: /* rand */
+			for (i = 0; i < config.iters; ++i) {
+				if (read_write_read(&res, start_addr + rand_line(), cycles_to_usec)) {
+					rc = 1;
+					goto main_exit;
+				}
+
+				if (i == CACHE_LINES) {
+					memset(bm, 0, sizeof(bm));
+				}
+			}
+			break;
 		}
 	}
 
