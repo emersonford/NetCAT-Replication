@@ -51,7 +51,7 @@ struct config_t {
 	u_int32_t	tcp_port;	/* server TCP port */
 	int		ib_port;	/* local IB port to work with */
 	int		gid_idx;	/* gid index to use */
-	unsigned int	iters;		/* number of iterations */
+	int		iters;		/* number of iterations */
 	int		mode; /* 0 for seq, 1 for rand */
 	int		msg_size; /* size of client buffer */
 	int		column_count; /* number of columns in the 2D array, size of one row is msg_size * column_count */

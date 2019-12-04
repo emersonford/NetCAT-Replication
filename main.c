@@ -426,22 +426,42 @@ int main(int argc, char *argv[])
 
 			case 'n':
 				config.iters = strtoul(optarg, NULL, 0);
+				if (config.iters < 0) {
+					usage(argv[0]);
+					return 1;
+				}
 				break;
 
 			case 'm':
 				config.mode = strtoul(optarg, NULL, 0);
+				if (config.mode < 0 || config.mode > 2) {
+					usage(argv[0]);
+					return 1;
+				}
 				break;
 
 			case 's':
 				config.msg_size = strtoul(optarg, NULL, 0);
+				if (config.msg_size < 0) {
+					usage(argv[0]);
+					return 1;
+				}
 				break;
 
 			case 'c':
 				config.column_count = strtoul(optarg, NULL, 0);
+				if (config.column_count < 0) {
+					usage(argv[0]);
+					return 1;
+				}
 				break;
 
 			case 'r':
 				config.row_count = strtoul(optarg, NULL, 0);
+				if (config.row_count < 0) {
+					usage(argv[0]);
+					return 1;
+				}
 				break;
 
 			default:
