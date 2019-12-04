@@ -3,7 +3,7 @@ require(docopt)
 library(ggplot2)
 library(reshape2)
 'Usage:
-   generate_graphs.R [<filename>]
+   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--diffthres=<ns>] [--positivediff]
 
 Options:
    --lxlim=<ns>      Left limit of x-axis on histogram [default: 0]
@@ -11,6 +11,7 @@ Options:
    --lthres=<ns>     Data to cut off if less than [default: 0]
    --rthres=<ns>     Data to cut off if greater than [default: 100000]
    --diffthres=<ns>  Data to cut off if difference is greater than [default: 100000]
+   --positivediff    Cut data if the diff is negative.
 
  ]' -> doc
 
@@ -20,7 +21,7 @@ opts$rxlim <- as.numeric(opts$rxlim)
 opts$lthres <- as.numeric(opts$lthres)
 opts$rthres <- as.numeric(opts$rthres)
 opts$diffthres <- as.numeric(opts$diffthres)
-# print(opts)
+print(opts)
 
 first.read.col <- 3
 second.read.col <- 4
@@ -34,13 +35,17 @@ df.orig <- data.frame(first_read=data[,first.read.col], second_read=data[,second
 df <- subset(df.orig, first_read > opts$lthres & second_read > opts$lthres)
 df <- subset(df, first_read < opts$rthres & second_read < opts$rthres)
 df <- subset(df, abs(first_read - second_read) < opts$diffthres)
+if (opts$positivediff) {
+    df <- subset(df, first_read - second_read > 0)
+}
 
 print(paste("Filtered", nrow(df.orig) - nrow(df), "rows."), sep="")
 
 histogram = ggplot(melt(df), aes(x = value, fill = variable)) +
     geom_density(alpha=0.5) +
     xlim(opts$lxlim, opts$rxlim) +
-    labs(title=opts$filename, x=datatype, fill="read type")
+    labs(title=opts$filename, x=datatype, fill="read type", caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=", ")) +
+    theme(plot.caption=element_text(size=4))
 
 ggsave(paste(strsplit(opts$filename, "\\.")[[1]][1], "-histogram.png", sep=""))
 
@@ -52,6 +57,7 @@ df$diff <- df$first_read - df$second_read
 barchart = ggplot(data=df, aes(x = id, y = diff)) +
     geom_bar(stat="identity", aes(fill=diff)) +
 #    scale_fill_gradient2(low="red", high="green", mid="black") +
-    labs(title=opts$filename, x="read-write-read iteration", y=paste(datatype, " diff", sep=""))
+    labs(title=opts$filename, x="read-write-read iteration", y=paste(datatype, " diff", sep=""), caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=", ")) +
+    theme(plot.caption=element_text(size=4))
 
 ggsave(paste(strsplit(opts$filename, "\\.")[[1]][1], "-barchart.png", sep=""))
