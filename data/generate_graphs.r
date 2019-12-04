@@ -45,7 +45,7 @@ print(paste("Filtered", nrow(df.orig) - nrow(df), "rows."), sep="")
 histogram = ggplot(melt(df), aes(x = value, fill = variable)) +
     geom_density(alpha=0.5) +
     xlim(opts$lxlim, opts$rxlim) +
-    labs(title=opts$filename, x=datatype, fill="read type", caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=", ")) +
+    labs(title=opts$filename, x=datatype, fill="read type", caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=" ")) +
     theme(plot.caption=element_text(size=4))
 
 if (opts$displaymean) {
@@ -63,7 +63,7 @@ df$diff <- df$first_read - df$second_read
 barchart = ggplot(data=df, aes(x = id, y = diff)) +
     geom_bar(stat="identity", aes(fill=diff)) +
 #    scale_fill_gradient2(low="red", high="green", mid="black") +
-    labs(title=opts$filename, x="read-write-read iteration", y=paste(datatype, " diff", sep=""), caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=", ")) +
+    labs(title=opts$filename, x="read-write-read iteration", y=paste(datatype, " diff", sep=""), caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=" ")) +
     theme(plot.caption=element_text(size=4))
 
 ggsave(paste(strsplit(opts$filename, "\\.")[[1]][1], "-barchart.png", sep=""))
