@@ -5,6 +5,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <endian.h>
@@ -438,12 +441,24 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	/* set cpu affinity for client */
+	/* set cpu affinity for client
 	if (config.server_name) {
 		cpu_set_t s;
 		CPU_ZERO(&s);
 		CPU_SET(sched_getcpu(), &s);
 		sched_setaffinity(0, sizeof(cpu_set_t), &s);
+	}*/
+	/* improve lat by disabling powersaving */
+	int lat_fd = open("/dev/cpu_dma_latency", O_RDWR);
+	uint32_t target = 0;
+	if (lat_fd < 0) {
+		fprintf(stderr, "Failed to open PM QOS file: %s",
+				strerror(errno));
+		goto main_exit;
+	}
+	if (write(lat_fd, &target, sizeof(target)) != 4) {
+		fprintf(stderr, "Unable to write latency");
+		goto main_exit;
 	}
 
 	/* print the used parameters for info */
@@ -582,6 +597,8 @@ main_exit:
 		free((char *) config.dev_name);
 
 	debug_print("\ntest result is %d\n", rc);
+	if (lat_fd >= 0)
+		close(lat_fd);
 
 	return rc;
 }
