@@ -155,7 +155,7 @@ static int post_send(struct resources *res, int opcode)
 	/* prepare the scatter/gather entry */
 	memset(&sge, 0, sizeof(sge));
 	sge.addr = (uintptr_t)res->buf;
-	sge.length = CLIENT_MSG_SIZE;
+	sge.length = config.msg_size;
 	sge.lkey = res->mr->lkey;
 
 	/* prepare the send work request */
@@ -201,7 +201,7 @@ static int post_send_poll_complete(struct resources *res, int opcode, uint64_t* 
 	/* prepare the scatter/gather entry */
 	memset(&sge, 0, sizeof(sge));
 	sge.addr = (uintptr_t)res->buf;
-	sge.length = CLIENT_MSG_SIZE;
+	sge.length = config.msg_size;
 	sge.lkey = res->mr->lkey;
 
 	/* prepare the send work request */
@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
 	struct resources	res;
 	int			rc = 1;
 	char		temp_char;
-	unsigned int		i, j;
+	int		i, j;
 	uint64_t start_addr, target_addr;
 
 	/* parse the command line parameters */
