@@ -3,7 +3,7 @@ require(docopt)
 library(ggplot2)
 library(reshape2)
 'Usage:
-   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--diffthres=<ns>] [--positivediff]
+   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--diffthres=<ns>] [--positivediff] [--displaymean]
 
 Options:
    --lxlim=<ns>      Left limit of x-axis on histogram [default: 0]
@@ -11,7 +11,8 @@ Options:
    --lthres=<ns>     Data to cut off if less than [default: 0]
    --rthres=<ns>     Data to cut off if greater than [default: 100000]
    --diffthres=<ns>  Data to cut off if difference is greater than [default: 100000]
-   --positivediff    Cut data if the diff is negative.
+   --positivediff    Cut data if the diff is negative
+   --displaymean     Display mean lines in histograms
 
  ]' -> doc
 
@@ -21,7 +22,7 @@ opts$rxlim <- as.numeric(opts$rxlim)
 opts$lthres <- as.numeric(opts$lthres)
 opts$rthres <- as.numeric(opts$rthres)
 opts$diffthres <- as.numeric(opts$diffthres)
-print(opts)
+# print(opts)
 
 first.read.col <- 3
 second.read.col <- 4
@@ -46,6 +47,11 @@ histogram = ggplot(melt(df), aes(x = value, fill = variable)) +
     xlim(opts$lxlim, opts$rxlim) +
     labs(title=opts$filename, x=datatype, fill="read type", caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=", ")) +
     theme(plot.caption=element_text(size=4))
+
+if (opts$displaymean) {
+    histogram + geom_vline(xintercept=mean(df$first_read), linetype="dashed") +
+        geom_vline(xintercept=mean(df$second_read), linetype="dashed")
+}
 
 ggsave(paste(strsplit(opts$filename, "\\.")[[1]][1], "-histogram.png", sep=""))
 
