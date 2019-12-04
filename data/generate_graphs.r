@@ -3,15 +3,15 @@ require(docopt)
 library(ggplot2)
 library(reshape2)
 'Usage:
-   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--diffthres=<ns>] [--positivediff] [--displaymean]
+   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--diffqthres=<q>] [--positivediff] [--displaymean]
 
 Options:
    --lxlim=<ns>      Left limit of x-axis on histogram [default: 0]
    --rxlim=<ns>      Right limit of x-axis on histogram [default: 10000]
-   --lthres=<ns>     Data to cut off if less than [default: 0]
-   --rthres=<ns>     Data to cut off if greater than [default: 100000]
-   --diffthres=<ns>  Data to cut off if difference is greater than [default: 100000]
-   --positivediff    Cut data if the diff is negative
+   --lthres=<ns>     Data to filter out if less than [default: 0]
+   --rthres=<ns>     Data to filter out if greater than [default: 100000]
+   --positivediff    Filter negative diffs
+   --diffqthres=<q>  Data to filter out if diff is greater than quantile(q) (0 <= q <= 1) [default: 1]
    --displaymean     Display mean lines in histograms
 
  ]' -> doc
@@ -21,7 +21,7 @@ opts$lxlim <- as.numeric(opts$lxlim)
 opts$rxlim <- as.numeric(opts$rxlim)
 opts$lthres <- as.numeric(opts$lthres)
 opts$rthres <- as.numeric(opts$rthres)
-opts$diffthres <- as.numeric(opts$diffthres)
+opts$diffqthres <- as.numeric(opts$diffqthres)
 # print(opts)
 
 first.read.col <- 3
@@ -35,10 +35,10 @@ df.orig <- data.frame(first_read=data[,first.read.col], second_read=data[,second
 
 df <- subset(df.orig, first_read > opts$lthres & second_read > opts$lthres)
 df <- subset(df, first_read < opts$rthres & second_read < opts$rthres)
-df <- subset(df, abs(first_read - second_read) < opts$diffthres)
 if (opts$positivediff) {
     df <- subset(df, first_read - second_read > 0)
 }
+df <- subset(df, first_read - second_read <= quantile(first_read - second_read, opts$diffqthres))
 
 print(paste("Filtered", nrow(df.orig) - nrow(df), "rows."), sep=" ")
 
