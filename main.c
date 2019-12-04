@@ -579,6 +579,7 @@ int main(int argc, char *argv[])
 			}
 
 			_mm_clflush(res.buf);
+			_mm_lfence();
 
 			if (sock_sync_data(res.sock, 1, "B", &temp_char)) {  /* just send a dummy char back and forth */
 				fprintf(stderr, "sync error after RDMA ops\n");
