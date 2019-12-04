@@ -195,7 +195,7 @@ int resources_create(struct resources *res)
 
 	/* allocate the memory buffer that will hold the data */
 	if (!config.server_name)
-		size = config.row_count * config.column_count;
+		size = config.row_count * (config.column_count * config.msg_size);
 	else
 		size = config.msg_size;
 
@@ -211,7 +211,7 @@ int resources_create(struct resources *res)
 	if (!config.server_name) {
 		for (i = 0; i < config.row_count; i++) {
 			for (j = 0; j < config.column_count; j++) {
-				res->buf[i * config.column_count + j] = curr_num;
+				res->buf[j * (config.column_count * config.msg_size) + i * (config.msg_size)] = curr_num;
 				curr_num++;
 			}
 		}
