@@ -60,10 +60,10 @@ struct config_t config = {
 	-1,	/* gid_idx */
 	1000, /* iters */
 	0, /* mode */
-	8, /* msg_size */
-	1024, /* column count, resulting size of row is two pages */
+	64, /* msg_size */
+	128, /* column count, resulting size of row is two pages */
 	8192 /* row count, resulting size of array should be ~67 MB
-			 well exceeding Intel's 20 MB LLC and producing 8M data points */
+			 well exceeding Intel's 20 MB LLC and producing 1M data points */
 };
 
 /* poll_completion */
@@ -304,8 +304,8 @@ static void usage(const char *argv0)
 			"Number of iterations to perform in the test "
 			"(default 1000)\n");
 	fprintf(stdout, " -m, --mode <mode>  set to 0 for seq or 1 for rand or 2 for clflush (default 0)\n");
-	fprintf(stdout, " -s, --msg-size <bytes>  size of client buffer (default 8)\n");
-	fprintf(stdout, " -c, --column-count <num>  number of columns (default 1024)\n");
+	fprintf(stdout, " -s, --msg-size <bytes>  size of client buffer (default 64)\n");
+	fprintf(stdout, " -c, --column-count <num>  number of columns (default 128)\n");
 	fprintf(stdout, " -r, --row-count <num>  number of rows (default 8192)\n");
 }
 
