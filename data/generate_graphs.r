@@ -40,7 +40,7 @@ if (opts$positivediff) {
     df <- subset(df, first_read - second_read > 0)
 }
 
-print(paste("Filtered", nrow(df.orig) - nrow(df), "rows."), sep="")
+print(paste("Filtered", nrow(df.orig) - nrow(df), "rows."), sep=" ")
 
 histogram = ggplot(melt(df), aes(x = value, fill = variable)) +
     geom_density(alpha=0.5) +
