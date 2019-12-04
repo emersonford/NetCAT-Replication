@@ -25,7 +25,7 @@
 #define MAX_POLL_CQ_TIMEOUT 2000
 
 #define CACHE_SIZE 64
-#define CACHE_LINES (SERVER_ROW_COUNT * SERVER_COLUMN_COUNT / CACHE_SIZE)
+#define CACHE_LINES (8192 * 1024 / CACHE_SIZE)
 #define BM_BITS_PER_WORD (sizeof(uint64_t) * CHAR_BIT)
 #define BM_WORDS (CACHE_LINES / BM_BITS_PER_WORD)
 
@@ -59,7 +59,11 @@ struct config_t config = {
 	1,	/* ib_port */
 	-1,	/* gid_idx */
 	1000, /* iters */
-	0 /* mode */
+	0, /* mode */
+	8, /* msg_size */
+	1024, /* column count, resulting size of row is two pages */
+	8192 /* row count, resulting size of array should be ~67 MB
+			 well exceeding Intel's 20 MB LLC and producing 8M data points */
 };
 
 /* poll_completion */
@@ -296,12 +300,13 @@ static void usage(const char *argv0)
 	fprintf(stdout, " -d, --ib-dev <dev> use IB device <dev> (default first device found)\n");
 	fprintf(stdout, " -i, --ib-port <port>   use port <port> of IB device (default 1)\n");
 	fprintf(stdout, " -g, --gid_idx <gid index>   gid index to be used in GRH (default not used)\n");
-#define L(x) #x
 	fprintf(stdout, " -n, --iterations <iterations>  "
 			"Number of iterations to perform in the test "
-			"(default "L(ITERS)")\n");
-#undef L
+			"(default 1000)\n");
 	fprintf(stdout, " -m, --mode <mode>  set to 0 for seq or 1 for rand or 2 for clflush (default 0)\n");
+	fprintf(stdout, " -s, --msg-size <bytes>  size of client buffer (default 8)\n");
+	fprintf(stdout, " -c, --column-count <num>  number of columns (default 1024)\n");
+	fprintf(stdout, " -r, --row-count <num>  number of rows (default 8192)\n");
 }
 
 static int read_write_read(struct resources *res, uint64_t target_addr, double cycles_to_usec) {
@@ -371,7 +376,7 @@ int main(int argc, char *argv[])
 	int			rc = 1;
 	char		temp_char;
 	unsigned int		i, j;
-	uint64_t start_addr;
+	uint64_t start_addr, target_addr;
 
 	/* parse the command line parameters */
 	while (1) {
@@ -384,10 +389,13 @@ int main(int argc, char *argv[])
 			{.name = "gid-idx",     .has_arg = 1,  .val = 'g' },
 			{.name = "iterations",  .has_arg = 1,  .val = 'n' },
 			{.name = "mode",		.has_arg = 1,  .val = 'm'},
+			{.name = "msg-size",	.has_arg = 1,  .val = 's'},
+			{.name = "column-count",	.has_arg = 1,	.val = 'c'},
+			{.name = "row-count",		.has_arg = 1,	.val = 'r'},
 			{.name = NULL,		.has_arg = 0,  .val = '\0'}
 		};
 
-		c = getopt_long(argc, argv, "p:d:i:g:n:m:", long_options, NULL);
+		c = getopt_long(argc, argv, "p:d:i:g:n:m:s:c:r:", long_options, NULL);
 		if (c == -1)
 			break;
 
@@ -422,6 +430,18 @@ int main(int argc, char *argv[])
 
 			case 'm':
 				config.mode = strtoul(optarg, NULL, 0);
+				break;
+
+			case 's':
+				config.msg_size = strtoul(optarg, NULL, 0);
+				break;
+
+			case 'c':
+				config.column_count = strtoul(optarg, NULL, 0);
+				break;
+
+			case 'r':
+				config.row_count = strtoul(optarg, NULL, 0);
 				break;
 
 			default:
@@ -500,9 +520,14 @@ int main(int argc, char *argv[])
 
 		switch (config.mode) {
 			case 0: /* seq */
-				for (i = 0; i < SERVER_COLUMN_COUNT; i+=CLIENT_MSG_SIZE) {
-					for (j = 0; j < SERVER_ROW_COUNT; ++j) {
-						if (read_write_read(&res, start_addr + j * SERVER_COLUMN_COUNT + i, cycles_to_usec)) {
+				for (i = 0; i < config.column_count; ++i) {
+					for (j = 0; j < config.row_count; ++j) {
+						/* index into the row we want */
+						target_addr = start_addr + j * (config.column_count * config.msg_size);
+						/* index into the column we want */
+						target_addr += i * config.msg_size;
+
+						if (read_write_read(&res, target_addr, cycles_to_usec)) {
 							rc = 1;
 							goto main_exit;
 						}

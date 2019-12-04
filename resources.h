@@ -9,11 +9,6 @@
 
 #include "print.h"
 
-/* Parameters for cache probing size */
-#define CLIENT_MSG_SIZE 64
-#define SERVER_COLUMN_COUNT 16384
-#define SERVER_ROW_COUNT 128
-
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
 static inline uint64_t ntohll(uint64_t x) { return bswap_64(x); }
@@ -58,6 +53,9 @@ struct config_t {
 	int		gid_idx;	/* gid index to use */
 	unsigned int	iters;		/* number of iterations */
 	int		mode; /* 0 for seq, 1 for rand */
+	int		msg_size; /* size of client buffer */
+	int		column_count; /* number of columns in the 2D array, size of one row is msg_size * column_count */
+	int		row_count; /* number of rows in the 2D array */
 };
 
 extern struct config_t config;

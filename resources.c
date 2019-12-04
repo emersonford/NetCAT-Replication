@@ -38,7 +38,7 @@ static int post_receive(struct resources *res)
 	/* prepare the scatter/gather entry */
 	memset(&sge, 0, sizeof(sge));
 	sge.addr = (uintptr_t)res->buf;
-	sge.length = CLIENT_MSG_SIZE;
+	sge.length = config.msg_size;
 	sge.lkey = res->mr->lkey;
 
 	/* prepare the receive work request */
@@ -195,9 +195,9 @@ int resources_create(struct resources *res)
 
 	/* allocate the memory buffer that will hold the data */
 	if (!config.server_name)
-		size = SERVER_COLUMN_COUNT * SERVER_ROW_COUNT;
+		size = config.row_count * config.column_count;
 	else
-		size = CLIENT_MSG_SIZE;
+		size = config.msg_size;
 
 	res->buf = (char *) malloc(size);
 	pin_all_memory();
@@ -209,9 +209,9 @@ int resources_create(struct resources *res)
 	}
 
 	if (!config.server_name) {
-		for (i = 0; i < SERVER_ROW_COUNT; i++) {
-			for (j = 0; j < SERVER_COLUMN_COUNT; j++) {
-				res->buf[i * SERVER_COLUMN_COUNT + j] = curr_num;
+		for (i = 0; i < config.row_count; i++) {
+			for (j = 0; j < config.column_count; j++) {
+				res->buf[i * config.column_count + j] = curr_num;
 				curr_num++;
 			}
 		}
