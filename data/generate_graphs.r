@@ -3,7 +3,7 @@ require(docopt)
 library(ggplot2)
 library(reshape2)
 'Usage:
-   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--difflthres=<q>] [--diffrthres=<q>] [--positivediff] [--displaymean] [--samplebar]
+   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--difflthres=<q>] [--diffrthres=<q>] [--positivediff] [--displaymean] [--samplebar=<n>]
 
 Options:
    --lxlim=<ns>      Left limit of x-axis on histogram [default: 0]
@@ -14,7 +14,7 @@ Options:
    --difflthres=<q>  Data to filter out if diff is less than quantile(q) (0 <= q <= 1) [default: 0]
    --diffrthres=<q>  Data to filter out if diff is greater than quantile(q) (0 <= q <= 1) [default: 1]
    --displaymean     Display mean lines in histograms
-   --samplebar       Sample data before generating bar chart to reduce generation time
+   --samplebar=<n>   Sample n points of data in generating bar chart to reduce generation time (pass -1 to disable) [default: 500000]
 
  ]' -> doc
 
@@ -25,6 +25,7 @@ opts$lthres <- as.numeric(opts$lthres)
 opts$rthres <- as.numeric(opts$rthres)
 opts$diffrthres <- as.numeric(opts$diffrthres)
 opts$difflthres <- as.numeric(opts$difflthres)
+opts$samplebar <- as.numeric(opts$samplebar)
 # print(opts)
 
 first.read.col <- 3
@@ -66,10 +67,10 @@ if (opts$displaymean) {
 ggsave(paste(strsplit(opts$filename, "\\.")[[1]][1], "-histogram.png", sep=""))
 
 
-if (opts$samplebar) {
+if (opts$samplebar > 0) {
     # Sample the data first so the barchart doesn't take forever.
-    s <- sample(df$id, 100000)
-    df <- subset(df, df$id %in% s)
+    df <- data.frame(diff=sample(df$diff, opts$samplebar))
+    df$id <- seq_len(nrow(df))
 }
 
 # print(head(df))
@@ -77,7 +78,7 @@ if (opts$samplebar) {
 barchart = ggplot(data=df , aes(x = id, y = diff)) +
     geom_bar(stat="identity") +
 #    scale_fill_gradient2(low="red", high="green", mid="black") +
-    labs(title=opts$filename, x="read-write-read iteration", y=paste(datatype, " diff", sep=""), caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=" ")) +
+    labs(title=opts$filename, x="read-write-read sampled iteration", y=paste(datatype, " diff", sep=""), caption=paste(names(opts[1:7]), opts[1:7], sep = "=", collapse=" ")) +
     theme(plot.caption=element_text(size=4))
 
 ggsave(paste(strsplit(opts$filename, "\\.")[[1]][1], "-barchart.png", sep=""))
