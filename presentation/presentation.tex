@@ -85,12 +85,156 @@
 \end{frame}
 
 \begin{frame}
- \frametitle{Timing Code}
- Read $\rightarrow$ Write $\rightarrow$ Read a remote address.
-
-
+ \frametitle{Test Hardware}
+ \begin{enumerate}
+  \item Apt Cluster \texttt{r320}: 1 x Xeon E5-2450 processor (8 cores, 2.1Ghz), 16GB Memory (4 x 2GB RDIMMs, 1.6Ghz), 1 x Mellanox MX354A Dual port FDR CX3 adapter w/1 x QSA adapter
+  \item Apt Cluster \texttt{c6220}: 2 x Xeon E5-2650v2 processors (8 cores each, 2.6Ghz), 64GB Memory (8 x 8GB DDR-3 RDIMMs, 1.86Ghz), 1 x Mellanox FDR CX3 Single port mezz card
+  \item Notchpeak Cluster \texttt{notch010}: 2 x Intel(R) Xeon(R) Gold 6130 CPU @ 2.10GHz, 186GB Memory, EDR Infiniband
+ \end{enumerate}
 
 \end{frame}
+
+\begin{frame}[fragile]
+ \frametitle{Timing Code}
+ Let $x$ be a remote address.
+ \begin{enumerate}
+  \item Read $x$ (cache miss)
+  \item Write to $x$ (pull into cache)
+  \item Read $x$ (cache hit)
+ \end{enumerate}
+
+ \begin{lstlisting}[frame=single,language=C,basicstyle=\tiny]
+start_cycle_count = start_tsc();
+
+rc = ibv_post_send(res->qp, &sr, &bad_wr);
+if (rc)
+    fprintf(stderr, "failed to post SR\n");
+do {
+    poll_result = ibv_poll_cq(res->cq, 1, &wc);
+} while (poll_result == 0);
+
+end_cycle_count = stop_tsc();
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}
+ \frametitle{Read-Write-Read Methods}
+ \begin{enumerate}
+  \item Read-write-read single address with a \texttt{clflush} between each iteration
+  \item Sequential reads with strides to (hopefully) overcome any prefetchers (64 byte msgs, columns count = 4, row count = 524288)
+  \item Random access
+ \end{enumerate}
+\end{frame}
+
+\begin{frame}[t,fragile]
+ \frametitle{\texttt{clflush} Method}
+ Client read$\rightarrow$write$\rightarrow$reads then syncs with server to call \texttt{clflush}.
+
+ \begin{block}{Client Code}
+
+  \begin{lstlisting}[frame=single, language=C, basicstyle=\tiny]
+for (i = 0; i < iters; ++i) {
+    if (read_write_read(&res, start_addr, cycles_to_usec)) { ... }
+
+    if (sock_sync_data(res.sock, 1, "A", &temp_char)) { ... }
+
+    if (sock_sync_data(res.sock, 1, "B", &temp_char)) { ... }
+}
+ \end{lstlisting}
+ \end{block}
+
+ \begin{block}{Server Code}
+  \begin{lstlisting}[frame=single, language=C, basicstyle=\tiny]
+for (i = 0; i < iters; ++i) {
+    if (sock_sync_data(res.sock, 1, "A", &temp_char)) { ... }
+
+    _mm_clflush(res.buf);
+    _mm_mfence();
+
+    if (sock_sync_data(res.sock, 1, "B", &temp_char)) { ... }
+}
+ \end{lstlisting}
+ \end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]
+ \frametitle{\texttt{clflush} Method}
+ \begin{columns}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-clflush-0-histogram.png}
+
+  \end{column}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-clflush-0-barchart.png}
+
+  \end{column}
+
+ \end{columns}
+\end{frame}
+
+\begin{frame}
+ \frametitle{\texttt{clflush} Method}
+ Calvin tried read$\rightarrow$read only... :(
+
+ \vspace{10pt}
+ \centering
+ \includegraphics[height=\textheight - 20mm]{trial-apt-clflush-rr.jpg}
+
+\end{frame}
+
+\begin{frame}[t]
+ \frametitle{\texttt{clflush} Method}
+ And these happened a few times with read$\rightarrow$write$\rightarrow$read?
+
+ \vspace{20pt}
+ \begin{columns}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-ns-clflush-3-histogram.png}
+
+  \end{column}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-ns-clflush-3-barchart.png}
+
+  \end{column}
+
+ \end{columns}
+
+\end{frame}
+
+
+\begin{frame}
+ \frametitle{Random Access Method}
+ \begin{columns}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-notchpeak-ns-rand-histogram.png}
+
+  \end{column}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-notchpeak-ns-rand-barchart.png}
+
+  \end{column}
+
+ \end{columns}
+
+\end{frame}
+
+\begin{frame}
+ \frametitle{Random Access Method}
+ bad graph...
+\end{frame}
+
+\begin{frame}
+ \frametitle{Sequential Access Method}
+ bad graph...
+\end{frame}
+
+\begin{frame}
+ \frametitle{Sequential Access Method}
+ bad graph...
+\end{frame}
+
+
 
 
 \begin{frame}
@@ -99,6 +243,9 @@
   \item NUMA
   \item RDMA-enabled nodes are likely to be network-traffic intensive
   \item Prefetchers
+  \item CPU frequency scaling
+  \item Potential Infiniband pathologies?
+  \item Potential DDIO pathologies (perhaps with \texttt{clflush} interactions)?
 
  \end{itemize}
 \end{frame}
