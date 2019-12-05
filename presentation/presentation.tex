@@ -133,17 +133,21 @@ end_cycle_count = stop_tsc(); // rdtscp -> lfence
 
 \begin{frame}
  \frametitle{Read-Write-Read Methods}
+
+ \vskip0pt plus 1filll
  \begin{enumerate}
   \item Read-write-read single address with a \texttt{clflush} between each iteration
   \item Sequential reads with strides to (hopefully) overcome any prefetchers (64 byte msgs, columns count = 4, row count = 524288)
   \item Random access
  \end{enumerate}
 
- \vspace{20pt}
- \begin{block}{\footnotesize{}Data Filter}
+ \vskip0pt plus 1filll
+ \begin{block}{\footnotesize{}Data Note}
   \footnotesize
   Graphs, unless noted, filter out data points where the diff was negative or the diff was $>=$ 99 percentile.
+  Graphs generated with \texttt{ggplot2} in \texttt{R}.
  \end{block}
+ \vspace{20pt}
 \end{frame}
 
 \begin{frame}[t,fragile]
