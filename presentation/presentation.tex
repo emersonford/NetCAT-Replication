@@ -39,6 +39,18 @@
 \end{frame}
 
 \begin{frame}
+ \frametitle{Accomplishments}
+
+ \begin{itemize}
+  \item \textit{Probably} able to measure if a remote memory access is served from LLC or DRAM.
+  \item Didn't get much farther as we struggled to get consistent results.
+  \item Project became far more learning based than result based.
+  \item Learned quite a lot about RDMA, Infiniband, DDIO, caches, CPU scaling, timing, etc.
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}
  \frametitle{RDMA Overview}
 
  \begin{enumerate}
@@ -104,7 +116,7 @@
  \end{enumerate}
 
  \begin{lstlisting}[frame=single,language=C,basicstyle=\tiny]
-start_cycle_count = start_tsc();
+start_cycle_count = start_tsc(); // lfence -> rdtsc -> lfence
 
 rc = ibv_post_send(res->qp, &sr, &bad_wr);
 if (rc)
@@ -113,8 +125,10 @@ do {
     poll_result = ibv_poll_cq(res->cq, 1, &wc);
 } while (poll_result == 0);
 
-end_cycle_count = stop_tsc();
+end_cycle_count = stop_tsc(); // rdtscp -> lfence
 \end{lstlisting}
+ \footnotesize
+ \texttt{start\_tsc}/\texttt{stop\_tsc} code taken from Google's Highway Hash Git repo.
 \end{frame}
 
 \begin{frame}
@@ -124,6 +138,12 @@ end_cycle_count = stop_tsc();
   \item Sequential reads with strides to (hopefully) overcome any prefetchers (64 byte msgs, columns count = 4, row count = 524288)
   \item Random access
  \end{enumerate}
+
+ \vspace{20pt}
+ \begin{block}{\footnotesize{}Data Filter}
+  \footnotesize
+  Graphs, unless noted, filter out data points where the diff was negative or the diff was $>=$ 99 percentile.
+ \end{block}
 \end{frame}
 
 \begin{frame}[t,fragile]
@@ -205,6 +225,7 @@ for (i = 0; i < iters; ++i) {
 
 \begin{frame}
  \frametitle{Random Access Method}
+ Tended to produce the cleanest data.
  \begin{columns}
   \begin{column}{0.5\textwidth}
    \includegraphics[width=\linewidth]{trial-notchpeak-ns-rand-histogram.png}
@@ -221,33 +242,100 @@ for (i = 0; i < iters; ++i) {
 
 \begin{frame}
  \frametitle{Random Access Method}
- bad graph...
+ Sometimes the results came out flipped?
+ \begin{columns}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-rand-0-histogram.png}
+
+  \end{column}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-rand-0-barchart.png}
+
+  \end{column}
+
+ \end{columns}
 \end{frame}
 
 \begin{frame}
  \frametitle{Sequential Access Method}
- bad graph...
+ Tended to consistently produce the results we wanted but the data was noisier.
+ \begin{columns}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-seq-3-histogram.png}
+
+  \end{column}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-seq-3-barchart.png}
+
+  \end{column}
+
+ \end{columns}
 \end{frame}
 
 \begin{frame}
  \frametitle{Sequential Access Method}
- bad graph...
+ \begin{columns}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-seq-0-histogram.png}
+
+  \end{column}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-seq-0-barchart.png}
+
+  \end{column}
+
+ \end{columns}
+
 \end{frame}
 
+\begin{frame}
+ \frametitle{Sequential Access Method}
+ Sequential access also observed a similar ``diff stepdown'' as \texttt{clflush}.
+ % TODO: HERE
+ \begin{columns}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-seq-0-histogram.png}
 
+  \end{column}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-seq-0-barchart.png}
 
+  \end{column}
+
+ \end{columns}
+
+\end{frame}
 
 \begin{frame}
- \frametitle{Problems}
+ \frametitle{What Might Causes These Graphs?}
  \begin{itemize}
   \item NUMA
-  \item RDMA-enabled nodes are likely to be network-traffic intensive
   \item Prefetchers
   \item CPU frequency scaling
+  \item Saturated Infiniband fabrics seem to increase mean latencies and variance.
   \item Potential Infiniband pathologies?
   \item Potential DDIO pathologies (perhaps with \texttt{clflush} interactions)?
-
+  \item RDMA-enabled nodes are likely to be network-traffic intensive (more cache evictions)
  \end{itemize}
+\end{frame}
+
+\begin{frame}
+ \frametitle{Problems Moving Forward}
+ \begin{itemize}
+  \item The ``diff stepdown'' destroys any statistical predictions on a cache miss/miss.
+  \item Noisy data is harder to predict on
+  \item Many of distributions are not normal, so we cannot use common regression tools`
+ \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+ \frametitle{Conclusion}
+ \begin{itemize}
+  \item \textit{Probably} can predict cache misses/hits
+  \item Lots of problems/pathologies you need to work through first
+ \end{itemize}
+
 \end{frame}
 
 
