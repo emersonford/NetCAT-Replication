@@ -137,7 +137,9 @@ end_cycle_count = stop_tsc(); // rdtscp -> lfence
  \vskip0pt plus 1filll
  \begin{enumerate}
   \item Read-write-read single address with a \texttt{clflush} between each iteration
-  \item Sequential reads with strides to (hopefully) overcome any prefetchers (64 byte msgs, columns count = 4, row count = 524288)
+  \item Sequential reads with strides to (hopefully) overcome any prefetchers
+
+         {\tiny (64 byte msgs, columns count = 4, row count = 524288, {\raise.17ex\hbox{$\scriptstyle\mathtt{\sim}$}}134 MB total)}
   \item Random access
  \end{enumerate}
 
