@@ -3,7 +3,7 @@ require(docopt)
 library(ggplot2)
 library(reshape2)
 'Usage:
-   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--diffqthres=<q>] [--positivediff] [--displaymean] [--samplebar]
+   generate_graphs.R <filename> [--lxlim=<ns>] [--rxlim=<ns>] [--lthres=<ns>] [--rthres=<ns>] [--difflthres=<q>] [--diffrthres=<q>] [--positivediff] [--displaymean] [--samplebar]
 
 Options:
    --lxlim=<ns>      Left limit of x-axis on histogram [default: 0]
@@ -11,7 +11,8 @@ Options:
    --lthres=<ns>     Data to filter out if less than [default: 0]
    --rthres=<ns>     Data to filter out if greater than [default: 100000]
    --positivediff    Filter negative diffs
-   --diffqthres=<q>  Data to filter out if diff is greater than quantile(q) (0 <= q <= 1) [default: 1]
+   --difflthres=<q>  Data to filter out if diff is less than quantile(q) (0 <= q <= 1) [default: 0]
+   --diffrthres=<q>  Data to filter out if diff is greater than quantile(q) (0 <= q <= 1) [default: 1]
    --displaymean     Display mean lines in histograms
    --samplebar       Sample data before generating bar chart to reduce generation time
 
@@ -22,7 +23,8 @@ opts$lxlim <- as.numeric(opts$lxlim)
 opts$rxlim <- as.numeric(opts$rxlim)
 opts$lthres <- as.numeric(opts$lthres)
 opts$rthres <- as.numeric(opts$rthres)
-opts$diffqthres <- as.numeric(opts$diffqthres)
+opts$diffrthres <- as.numeric(opts$diffrthres)
+opts$difflthres <- as.numeric(opts$difflthres)
 # print(opts)
 
 first.read.col <- 3
@@ -38,10 +40,15 @@ df.orig$diff <- df.orig$first_read - df.orig$second_read
 
 df <- subset(df.orig, first_read > opts$lthres & second_read > opts$lthres)
 df <- subset(df, first_read < opts$rthres & second_read < opts$rthres)
+
 if (opts$positivediff) {
     df <- subset(df, diff > 0)
 }
-df <- subset(df, diff <= quantile(first_read - second_read, opts$diffqthres))
+
+lq <- quantile(df$diff, opts$difflthres)
+rq <- quantile(df$diff, opts$diffrthres)
+df <- subset(df, diff >= lq)
+df <- subset(df, diff <= rq)
 
 print(paste("Filtered", nrow(df.orig) - nrow(df), "rows."), sep=" ")
 
