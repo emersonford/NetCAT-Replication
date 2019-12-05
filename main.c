@@ -61,9 +61,9 @@ struct config_t config = {
 	1000, /* iters */
 	0, /* mode */
 	64, /* msg_size */
-	128, /* column count, resulting size of row is two pages */
-	8192 /* row count, resulting size of array should be ~67 MB
-			 well exceeding Intel's 20 MB LLC and producing 1M data points */
+	4, /* column count, resulting size of row is four cache lines */
+	524288 /* row count, resulting size of array should be ~134 MB
+			 well exceeding Intel's 20 MB LLC and producing 2M data points */
 };
 
 /* poll_completion */
