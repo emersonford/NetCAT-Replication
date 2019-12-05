@@ -312,6 +312,23 @@ for (i = 0; i < iters; ++i) {
 \end{frame}
 
 \begin{frame}
+ \frametitle{Sequential Access Method}
+ Sequential access produces expected behavior for read$\rightarrow$read.
+ \begin{columns}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-seq-rr-0-histogram.png}
+
+  \end{column}
+  \begin{column}{0.5\textwidth}
+   \includegraphics[width=\linewidth]{trial-apt-seq-rr-0-barchart.png}
+
+  \end{column}
+
+ \end{columns}
+
+\end{frame}
+
+\begin{frame}
  \frametitle{What Might Causes These Graphs?}
  \begin{itemize}
   \item NUMA
@@ -334,6 +351,7 @@ for (i = 0; i < iters; ++i) {
   \item Many of distributions are not normal, so we cannot use common regression tools.
   \item Couldn't figure out a baseline for the ns difference between DRAM and LLC access
   \item Mapping addresses to sets was far more challenging than expected
+  \item Haven't check if the compiler does anything weird
  \end{itemize}
 \end{frame}
 
