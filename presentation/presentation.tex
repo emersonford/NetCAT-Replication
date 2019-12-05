@@ -18,11 +18,11 @@
 \begin{frame}[t]
  \frametitle{NetCAT Overview}
  \begin{block}{Claim}
-  Using RDMA over Infiniband, a remote host can measure if a remote memory access is served from LLC or from RAM on a target host with DDIO enabled.
+  Using RDMA over Infiniband, a remote host can measure if a remote memory access is served from LLC or from DRAM on a target host with DDIO enabled.
  \end{block}
 
  \begin{block}{Impact}
-  This enables cache-timing based attacks (such as PRIME+PROBE) over the network which then enables attacks like SSH keystroke timing attacks.
+  Enables cache-timing based attacks (such as PRIME+PROBE) over the network which then enables attacks like SSH keystroke timing attacks.
  \end{block}
 
  \begin{block}{Key Replication Questions}
@@ -49,7 +49,7 @@
   \begin{enumerate}
    \setcounter{enumi}{1}
    \item Client specifies a remote address and fires off `READ' verb.
-   \item Client NIC communicates with remote NIC to read remote memory address (no server CPU involvement).
+   \item Client NIC communicates with remote NIC to read remote memory address (no CPU involvement).
    \item Client NIC places remote memory contents into client's registered memory.
   \end{enumerate}
  \end{block}
@@ -59,27 +59,48 @@
    \setcounter{enumi}{1}
    \item Client alters local registered memory.
    \item Client specifies a remote address and fires off `WRITE' verb.
-   \item Client NIC communicates with remote NIC to write local memory contents at remote address (no server CPU involvement).
+   \item Client NIC communicates with remote NIC to write local memory contents at remote address (no CPU involvement).
   \end{enumerate}
  \end{block}
 
 \end{frame}
 
 \begin{frame}
- \frametitle{RDMA/DDIO Quirks}
- \begin{enumerate}
-  \item Reads can be served from LLC or RAM. If served from RAM, the memory is \textbf{not} loaded into LLC.
-  \item Writes will load memory into the LLC.
-  \item DDIO is ``restricted to 10\% of the last-level cache''.
- \end{enumerate}
+ \frametitle{Other Key Facts}
+
+ \begin{block}{DDIO}
+  \begin{itemize}
+   \item Reads can be served from LLC or DRAM. If served from DRAM, the memory is \textbf{not} loaded into LLC.
+   \item Writes will load memory into the LLC if not already present.
+   \item DDIO is ``restricted to 10\% of the last-level cache''.
+  \end{itemize}
+ \end{block}
+
+ \begin{block}{Infiniband}
+  \begin{itemize}
+   \item DRAM access and LLC access for an Infiniband NIC should take longer than a CPU's access due to PCIe communication?
+   \item Infiniband RDMA reads (on \texttt{apt080} and \texttt{apt083}) take 1900ns on average with 50ns standard deviation.
+  \end{itemize}
+ \end{block}
+\end{frame}
+
+\begin{frame}
+ \frametitle{Timing Code}
+ Read $\rightarrow$ Write $\rightarrow$ Read a remote address.
 
 
 
 \end{frame}
 
-\begin{frame}
- \frametitle{NetCAT Overview}
 
+\begin{frame}
+ \frametitle{Problems}
+ \begin{itemize}
+  \item NUMA
+  \item RDMA-enabled nodes are likely to be network-traffic intensive
+  \item Prefetchers
+
+ \end{itemize}
 \end{frame}
 
 
