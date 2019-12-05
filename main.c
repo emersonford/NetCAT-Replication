@@ -60,10 +60,12 @@ struct config_t config = {
 	-1,	/* gid_idx */
 	1000, /* iters */
 	0, /* mode */
-	64, /* msg_size */
-	4, /* column count, resulting size of row is four cache lines */
-	524288 /* row count, resulting size of array should be ~134 MB
-			 well exceeding Intel's 20 MB LLC and producing 2M data points */
+	64, /* msg_size, size of a cache line */
+	4, /* column count, resulting size of row is four cache lines
+			pray the prefetcher fetches no more than 2 cache lines
+			ahead. */
+	524288 /* row count, each pass is ~33MB so everything should be
+			  evicted from Intel's 20 MB LLC on the next pass. */
 };
 
 /* poll_completion */
