@@ -332,13 +332,14 @@ for (i = 0; i < iters; ++i) {
  \frametitle{What Might Causes These Graphs?}
  \begin{itemize}
   \item NUMA
-  \item Prefetchers
+  \item Prefetchers (the NIC might have a prefetcher?)
   \item CPU frequency scaling
   \item CPU power management
+  \item CPU affinity
   \item Hyperthreading
   \item Saturated Infiniband fabrics seem to increase mean latencies and variance.
   \item Potential Infiniband pathologies?
-  \item Potential DDIO pathologies (perhaps with \texttt{clflush} interactions)?
+  \item Potential DDIO pathologies (perhaps with \texttt{clflush} interactions, no documentation)?
   \item RDMA-enabled nodes are likely to be network-traffic intensive (more cache evictions)
  \end{itemize}
 \end{frame}
